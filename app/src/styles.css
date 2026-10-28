@@ -159,3 +159,18 @@ ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .window-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.8rem; margin-top: -4px; }
 .legend { display: inline-flex; align-items: center; gap: 4px; }
 .tick-key { display: inline-block; width: 2px; height: 12px; background: var(--text); }
+
+/* Update banner and version line */
+.update {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: #0c4a6e; border: 1px solid var(--accent); border-radius: 14px;
+  padding: 10px 12px; margin-bottom: 12px;
+}
+.update-notes, .update-error { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+.update-error { color: var(--ok); }
+.update-bar { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.update-bar span { display: block; height: 100%; background: var(--accent); }
+.version { margin-top: 24px; text-align: center; color: var(--muted); font-size: 0.8rem; }
+button.link {
+  all: unset; color: var(--accent); margin-left: 8px; cursor: pointer; min-height: 0;
+}

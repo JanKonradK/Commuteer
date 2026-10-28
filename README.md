@@ -130,8 +130,18 @@ cd app
 npm install
 npm test                                         # 22 tests
 npm run dev                                      # browser preview at localhost:5173
-npm run android:apk                              # needs JDK 21 and the Android SDK
+npm run build:android                            # signed APK + SHA256SUMS.txt (needs JDK 21, Android SDK)
 ```
+
+## Releases and in-app updates
+
+The app updates itself from GitHub Releases, the same way as [Memoria](https://github.com/JanKonradK/Memoria):
+
+1. Bump `version` in `app/package.json` and write notes in `docs/releases/v<version>.md`.
+2. Push a tag `v<version>`. The **Release** workflow tests the app, refuses a tag that doesn't match `package.json`, builds the APK signed with the key from the `ANDROID_KEYSTORE_BASE64` secret, and publishes it with `SHA256SUMS.txt`.
+3. Installed apps check GitHub on launch and twice a day and show a banner. **Install** downloads the APK, verifies its SHA-256 against the release, and opens Android's installer (`AppUpdaterPlugin.java`).
+
+Android only accepts an update signed with the same key as the installed app, and with a higher version code (from `package.json`: 0.2.0 → 200). Saved trips and timetables live in the app's storage and are kept across updates. Personal presets from `app/src/local/` are saved to that storage on first launch, so updates built on GitHub, which don't include them, keep them.
 
 ## Deploy the collector (AWS, eu-north-1)
 

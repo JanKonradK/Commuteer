@@ -3,6 +3,7 @@ import { load, save } from "./lib/storage";
 import { BusView } from "./views/BusView";
 import { CommuteView } from "./views/CommuteView";
 import { ShuttleView, useShuttles } from "./views/ShuttleView";
+import { UpdateBanner, useUpdates, VersionLine } from "./UpdateBanner";
 import { TrainView } from "./views/TrainView";
 
 const TABS = [
@@ -16,6 +17,7 @@ type Tab = (typeof TABS)[number]["id"];
 export default function App() {
   const [tab, setTab] = useState<Tab>(() => load("tab", "commute"));
   const [shuttles, setShuttles] = useShuttles();
+  const updates = useUpdates();
   const go = (t: Tab) => {
     setTab(t);
     save("tab", t);
@@ -23,6 +25,7 @@ export default function App() {
 
   return (
     <main>
+      <UpdateBanner updates={updates} />
       <nav className="tabs" role="tablist">
         {TABS.map((t) => (
           <button
@@ -41,6 +44,7 @@ export default function App() {
       {tab === "train" && <TrainView />}
       {tab === "bus" && <BusView />}
       {tab === "shuttle" && <ShuttleView shuttles={shuttles} onChange={setShuttles} />}
+      <VersionLine updates={updates} />
     </main>
   );
 }

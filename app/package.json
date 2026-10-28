@@ -1,14 +1,14 @@
 {
   "name": "commuteer-app",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "android:sync": "npm run build && cap sync android",
-    "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug"
+    "build:android": "node scripts/build-android.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",

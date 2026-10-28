@@ -1,0 +1,103 @@
+name: Release
+
+# Push a tag like v0.2.0 to build the Android app and publish it as a GitHub
+# release. Installed apps find it through "Check for updates" (app/src/lib/update.ts).
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and publish (e.g. v0.2.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - run: npm ci
+
+      # A tag never ships without passing what main has to pass.
+      - run: npx tsc --noEmit
+      - run: npm test
+
+      - name: Refuse a tag that disagrees with package.json
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          declared="v$(node -p "require('./package.json').version")"
+          if [ "$RELEASE_TAG" != "$declared" ]; then
+            echo "Tag $RELEASE_TAG does not match package.json ($declared)."
+            echo "The updater compares the tag with the version built into the app;"
+            echo "if they differ, phones would offer the same version again or never update."
+            exit 1
+          fi
+
+      # Android only installs an update signed with the key already on the phone,
+      # so a release without that key must not ship an APK.
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Restore the Android signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "The ANDROID_KEYSTORE_BASE64 secret is missing."
+            exit 1
+          fi
+          mkdir -p "$HOME/.android"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$HOME/.android/debug.keystore"
+
+      - run: chmod +x android/gradlew
+      - run: npm run build:android
+
+      # The app shows everything above "## Download" as the release notes.
+      # Write them in docs/releases/<tag>.md before tagging.
+      - name: Write the release notes
+        env:
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          notes="../docs/releases/$RELEASE_TAG.md"
+          download="https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG"
+          {
+            if [ -f "$notes" ]; then cat "$notes"; echo; fi
+            echo "## Download"
+            echo
+            echo "**[Commuteer-android.apk]($download/Commuteer-android.apk)**: open it on your phone and install over the existing app."
+            echo
+            echo "Installed apps update themselves: tap **Install** on the update banner, or **Check for updates** at the bottom of the app."
+            echo "Your saved trips and timetables stay on the phone and are kept by updates."
+          } > dist/release-notes.md
+          cat dist/release-notes.md dist/release/SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: Commuteer ${{ github.event.inputs.tag || github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            app/dist/release/Commuteer-android.apk
+            app/dist/release/SHA256SUMS.txt
+          body_path: app/dist/release-notes.md
