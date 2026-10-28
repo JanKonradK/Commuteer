@@ -125,7 +125,7 @@ describe("connections", () => {
   };
 
   it("connects each bus to the first shuttle you can still catch", async () => {
-    globalThis.fetch = (async () => new Response(JSON.stringify({ trips: {} }))) as typeof fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify({ feed_timestamp: Date.now() / 1000, trips: {} }))) as typeof fetch;
     const cs = await connections(commute, pack, [shuttle], NOW);
     const first = cs[0];
     expect(first.first.label).toBe("466");
@@ -135,7 +135,7 @@ describe("connections", () => {
   });
 
   it("only shows the latest first leg that makes each second leg", async () => {
-    globalThis.fetch = (async () => new Response(JSON.stringify({ trips: {} }))) as typeof fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify({ feed_timestamp: Date.now() / 1000, trips: {} }))) as typeof fetch;
     // Home: the 09:30 and 10:00 shuttles both make the 11:00 bus; only the 10:00 is worth showing.
     const home = reverse(commute);
     const early = new Date(2026, 9, 28, 9, 20);

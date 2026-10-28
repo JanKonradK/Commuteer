@@ -138,6 +138,10 @@ ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .bus-details-body p { margin: 6px 0; }
 .bus-details-body strong { color: var(--text); }
 .bus-details a { color: var(--accent); }
+.commute-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.calculate { font-size: 0.9rem; padding: 8px 12px; }
+.journey-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 0.8rem; }
+.route-warning { margin: 0; padding: 10px 12px; border-left: 3px solid var(--ok); color: var(--text); background: var(--card); font-size: 0.85rem; }
 
 /* Tappable card header (commute) */
 .card-head { all: unset; display: grid; gap: 10px; cursor: pointer; }
