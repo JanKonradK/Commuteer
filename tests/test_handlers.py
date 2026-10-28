@@ -74,3 +74,31 @@ def test_key_is_reread_after_ttl(aws: None) -> None:
     assert handlers._nta_api_key(clock=lambda: now[0]) is None  # still cached
     now[0] = handlers.KEY_TTL_S + 1
     assert handlers._nta_api_key(clock=lambda: now[0]) == "new-key"
+
+
+def _put_feed(name: str = "nta_trip_updates.pb.gz") -> None:
+    from pathlib import Path
+
+    data = (Path(__file__).parent / "fixtures" / name).read_bytes()
+    boto3.client("s3").put_object(Bucket="data", Key="latest/nta_trip_updates.pb.gz", Body=data)
+
+
+def test_bus_live_returns_requested_trips(aws: None) -> None:
+    handlers._feed_cache.clear()
+    _put_feed()
+    out = handlers.bus_live({"queryStringParameters": {"trips": "5940_99651,not-a-trip"}}, None)
+    body = json.loads(out["body"])
+    assert out["statusCode"] == 200
+    assert set(body["trips"]) == {"5940_99651"}  # route 466, Athlone 07:30
+    stops = body["trips"]["5940_99651"]["stops"]
+    assert [stops[0][1], stops[0][2]] == ["8290B1520801", -40]  # Ballymahon, 40 s early
+
+
+def test_bus_live_rejects_empty_request(aws: None) -> None:
+    assert handlers.bus_live({"queryStringParameters": None}, None)["statusCode"] == 400
+
+
+def test_bus_live_reports_missing_feed(aws: None) -> None:
+    handlers._feed_cache.clear()
+    out = handlers.bus_live({"queryStringParameters": {"trips": "x"}}, None)
+    assert out["statusCode"] == 503

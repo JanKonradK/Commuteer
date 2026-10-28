@@ -1,2 +1,4 @@
 node_modules/
 dist/
+# Personal timetables (e.g. staff shuttles): built into your own APK, never committed.
+src/local/

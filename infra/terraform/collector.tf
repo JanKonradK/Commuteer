@@ -54,9 +54,12 @@ resource "aws_iam_role" "collector" {
 
 data "aws_iam_policy_document" "collector" {
   statement {
-    sid       = "WriteRawData"
-    actions   = ["s3:PutObject", "s3:GetObject"]
-    resources = ["${aws_s3_bucket.data.arn}/bronze/*"]
+    sid     = "WriteRawData"
+    actions = ["s3:PutObject", "s3:GetObject"]
+    resources = [
+      "${aws_s3_bucket.data.arn}/bronze/*",
+      "${aws_s3_bucket.data.arn}/latest/*", # newest snapshot of each feed, read by bus_live
+    ]
   }
   statement {
     sid       = "ListRawData"
@@ -69,9 +72,12 @@ data "aws_iam_policy_document" "collector" {
     resources = [aws_ssm_parameter.nta_api_key.arn]
   }
   statement {
-    sid       = "WriteLogs"
-    actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
-    resources = [for lg in aws_cloudwatch_log_group.collector : "${lg.arn}:*"]
+    sid     = "WriteLogs"
+    actions = ["logs:CreateLogStream", "logs:PutLogEvents"]
+    resources = concat(
+      [for lg in aws_cloudwatch_log_group.collector : "${lg.arn}:*"],
+      ["${aws_cloudwatch_log_group.bus_live.arn}:*"],
+    )
   }
 }
 

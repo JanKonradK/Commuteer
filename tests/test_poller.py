@@ -33,6 +33,7 @@ def test_poll_source_stores_gzipped_payload(sink: LocalSink) -> None:
     result = poll_source(RAIL, sink, fetcher, now=lambda: NOW)
     assert result.error is None and result.key is not None
     assert gzip.decompress(sink.get(result.key)) == b"<xml/>"
+    assert gzip.decompress(sink.get("latest/rail.xml.gz")) == b"<xml/>"  # newest-copy for the API
 
 
 def test_poll_source_passes_headers(sink: LocalSink) -> None:

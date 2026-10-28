@@ -9,3 +9,7 @@ output "nta_api_key_parameter" {
 output "functions" {
   value = { for k, f in aws_lambda_function.collector : k => f.function_name }
 }
+
+output "bus_live_url" {
+  value = aws_lambda_function_url.bus_live.function_url
+}

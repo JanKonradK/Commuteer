@@ -14,6 +14,10 @@ def bronze_key(source: str, fetched_at: datetime, extension: str) -> str:
     return f"{bronze_prefix(source, ts.date())}hour={ts:%H}/{ts:%Y%m%dT%H%M%S}Z.{extension}.gz"
 
 
+def latest_key(source: str, extension: str) -> str:
+    return f"latest/{source}.{extension}.gz"
+
+
 def timestamp_from_key(key: str) -> datetime:
     stamp = key.rsplit("/", 1)[-1].split(".", 1)[0]
     return datetime.strptime(stamp, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)

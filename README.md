@@ -10,7 +10,7 @@ Three parts:
 |---|---|---|
 | [Data collector](#1-data-collector-aws) | Records live train and bus feeds 24/7 to build a delay history | Python, AWS Lambda, EventBridge Scheduler, S3, Terraform |
 | [Delay models](#2-delay-models) | Predict a train's arrival-delay range from where it is now | PyTorch, scikit-learn, MLflow, conformal prediction |
-| [Android app](#3-android-app) | Shows your next trains with live delays and predicted arrival ranges | TypeScript, React, Capacitor; model runs on-device |
+| [Android app](#3-android-app) | Trains with predicted arrival ranges, live buses, your own shuttle timetables, and two-leg commutes | TypeScript, React, Capacitor; model runs on-device |
 
 ## 1. Data collector (AWS)
 
@@ -89,6 +89,14 @@ Pick your commute (for example Athlone → Dublin Heuston). Each train shows **d
 - **Reliable:** requests time out and retry; the last results stay on screen with a warning when there's no signal; the station list is cached; it refreshes every minute while open.
 - **Tested:** 12 tests (Vitest) cover parsing, the midnight crossover, the model's match with PyTorch, and journey logic. It has also been run on an Android emulator, both online and offline.
 
+### Buses, shuttles and commutes
+
+- **🚌 Buses.** `commuteer-buses pack` cuts the 200 MB national timetable down to the Midlands: stops within 40 km of Athlone, 58 routes, 5,027 trips, with each trip's running days resolved over 120 days. That's 1.4 MB (129 KB gzipped), bundled in the app so it works offline.
+- **Live bus delays.** A Lambda function URL (`bus_live`) returns delays for the trips a phone asks about. It reads the snapshot the collector already saved, so phones never see the Transport for Ireland key and TFI gets no extra traffic. It decodes the GTFS-Realtime protobuf with a small standard-library decoder, which is tested against Google's official bindings on 3,565 real trips. Responses take about 160 ms.
+- **🚐 Your own timetables.** Paste times as plain text (`07:45 Inny Kayak Club`, with `*` for drop-off only); they're stored on the phone. Private timetables, like an employer's staff shuttle, go in `app/src/local/*.shuttles.json`. That folder is git-ignored and built into your own APK only.
+- **⭐ Commutes.** Two legs with a walk between them (e.g. bus 466 Athlone → Ballymahon, walk, shuttle → work). Each first-leg departure is matched to the first second-leg departure you can still make using live bus delays, and drawn to scale: ride, walk, wait (coloured by minutes to spare), ride. ⇄ reverses it for the trip home.
+- **Not modelled yet:** bus delays come from TFI's live estimate. A bus delay model like the train one needs a few weeks of the collector's bus history first.
+
 ## Development
 
 Requires [uv](https://docs.astral.sh/uv/) and Node.js.
@@ -102,12 +110,13 @@ uv run ruff check . && uv run mypy src tests     # lint + strict types
 uv run commuteer-collect poll --loop             # collect live feeds into ./data
 uv run commuteer-collect backfill --days 56 --gtfs data/gtfs/GTFS_All.zip
 uv run commuteer-train                           # train, compare, log to MLflow, export app model
+uv run commuteer-buses pack --gtfs data/gtfs/GTFS_All.zip   # Midlands bus timetable for the app
 uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
 
 # Android app
 cd app
 npm install
-npm test                                         # 12 tests
+npm test                                         # 22 tests
 npm run dev                                      # browser preview at localhost:5173
 npm run android:apk                              # needs JDK 21 and the Android SDK
 ```
@@ -130,4 +139,5 @@ aws ssm put-parameter --name /commuteer/nta_api_key --type SecureString --overwr
 - **Per-service-type calibration**, so InterCity ranges hit 80% coverage.
 - **Weekly retraining** from the live collector's data, with drift checks.
 - **Transfers:** the chance of making a connection, and "get off early and switch" suggestions.
-- **Buses:** delay models for the Bus Éireann feeds already being collected.
+- **Bus delay model** once the collector has a few weeks of bus history; then "chance you make the shuttle" instead of minutes to spare.
+- **Nightly timetable refresh** for the bus pack, built by the existing `gtfs_snapshot` Lambda.

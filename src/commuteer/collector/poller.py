@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 
 from commuteer.collector.config import Source
 from commuteer.collector.http import Fetcher, FetchError
-from commuteer.collector.keys import bronze_key
+from commuteer.collector.keys import bronze_key, latest_key
 from commuteer.collector.storage import Sink
 
 log = logging.getLogger(__name__)
@@ -44,7 +44,10 @@ def poll_source(
         log.warning("poll_error source=%s error=empty payload", source.name)
         return PollResult(source.name, None, 0, "empty payload")
     key = bronze_key(source.name, fetched_at, source.extension)
-    sink.put(key, gzip.compress(payload, mtime=0))
+    compressed = gzip.compress(payload, mtime=0)
+    sink.put(key, compressed)
+    # A fixed-name copy of the newest snapshot, so the live API can read it in one request.
+    sink.put(latest_key(source.name, source.extension), compressed)
     return PollResult(source.name, key, len(payload))
 
 
