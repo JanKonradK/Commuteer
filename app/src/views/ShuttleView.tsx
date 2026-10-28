@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { load, save } from "../lib/storage";
 import { busiestPair, parseRows, rowsToText, type Shuttle, shuttleStore, shuttleTrips, stopsOf } from "../lib/shuttles";
-import { Times } from "../ui";
+import { Times, secondsSinceMidnight } from "../ui";
 
 const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -159,7 +159,7 @@ export function ShuttleView(props: { shuttles: Shuttle[]; onChange: (list: Shutt
       <ul>
         {trips.map((t) => (
           <li key={t.departS} className="card none">
-            <Times departS={t.departS} arriveS={t.arriveS} scheduledDepartS={t.departS} scheduledArriveS={t.arriveS} />
+            <Times departS={t.departS} arriveS={t.arriveS} scheduledDepartS={t.departS} scheduledArriveS={t.arriveS} nowS={secondsSinceMidnight()} />
           </li>
         ))}
       </ul>

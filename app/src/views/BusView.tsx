@@ -9,22 +9,27 @@ import {
   packExpired,
   withLiveDelays,
 } from "../lib/buses";
-import { delayTone, StatusRow, Times, useAutoRefresh } from "../ui";
+import { Chip, delayText, delayTone, StatusRow, Times, useAutoRefresh, secondsSinceMidnight } from "../ui";
 
 function BusCard({ d }: { d: BusDeparture }) {
   const live = d.departDelayS !== null || d.arriveDelayS !== null;
   const depDelay = d.departDelayS ?? 0;
   const arrDelay = d.arriveDelayS ?? d.departDelayS ?? 0;
+  const delayMin = live ? arrDelay / 60 : null;
   return (
-    <li className={`card ${delayTone(live ? Math.max(depDelay, arrDelay) / 60 : null)}`}>
-      <span className="route">{d.route}</span>
+    <li className={`card ${delayTone(delayMin)}`}>
       <Times
         departS={d.departS + depDelay}
         arriveS={d.arriveS + arrDelay}
         scheduledDepartS={d.departS}
         scheduledArriveS={d.arriveS}
+        nowS={secondsSinceMidnight()}
       />
-      <span className={`live ${live ? "on" : ""}`} aria-label={live ? "Live" : "Timetable only"} />
+      <div className="chips">
+        <span className="route">{d.route}</span>
+        <span className="muted small">to {d.headsign}</span>
+        <Chip tone={delayTone(delayMin)}>{delayText(delayMin)}</Chip>
+      </div>
     </li>
   );
 }

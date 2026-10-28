@@ -89,13 +89,22 @@ export async function connections(
   count = 4,
 ): Promise<Connection[]> {
   const nowS = (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 1000;
-  const firsts = (await legTrips(commute.legs[0], pack, shuttles, now, nowS - 60, 720)).slice(0, count);
+  const firsts = await legTrips(commute.legs[0], pack, shuttles, now, nowS - 60, 720);
   const seconds = await legTrips(commute.legs[1], pack, shuttles, now, nowS, 900);
-  return firsts.map((first) => {
+  const all = firsts.map((first) => {
     const ready = first.arriveS + commute.walkMin * 60;
     const second = seconds.find((t) => t.departS >= ready) ?? null;
     return { first, second, spareMin: second ? (second.departS - ready) / 60 : null };
   });
+  // Several first legs often feed the same second leg (e.g. three shuttles, one bus home).
+  // Only the latest of them is worth showing: same arrival, least waiting around.
+  const best = new Map<string, Connection>();
+  for (const c of all) {
+    const key = c.second ? `${c.second.label}@${c.second.scheduledDepartS}` : `none@${c.first.departS}`;
+    const seen = best.get(key);
+    if (!seen || c.first.departS > seen.first.departS) best.set(key, c);
+  }
+  return [...best.values()].sort((a, b) => a.first.departS - b.first.departS).slice(0, count);
 }
 
 export function reverse(c: Commute): Commute {

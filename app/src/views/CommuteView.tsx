@@ -1,64 +1,92 @@
 import { useEffect, useMemo, useState } from "react";
 import { type BusPack, groupStops, loadPack } from "../lib/buses";
-import { type Commute, type Connection, commuteStore, connections, type Leg, reverse } from "../lib/commute";
-import { clock } from "../lib/predict";
+import { type Commute, type Connection, commuteStore, connections, type Leg, type LegTrip, reverse } from "../lib/commute";
 import { type Shuttle, stopsOf } from "../lib/shuttles";
-import { StatusRow, Times, useAutoRefresh } from "../ui";
+import { Chip, delayText, delayTone, StatusRow, Time, Times, useAutoRefresh, secondsSinceMidnight } from "../ui";
 
 function spareTone(min: number | null): "good" | "ok" | "bad" {
   if (min === null) return "bad";
   return min >= 5 ? "good" : min >= 2 ? "ok" : "bad";
 }
 
-/** Journey drawn to scale: ride, walk, wait (coloured by spare time), ride. */
-function Strip({ c, walkMin }: { c: Connection; walkMin: number }) {
-  const start = c.first.departS;
-  const end = c.second ? c.second.arriveS : c.first.arriveS + walkMin * 60;
-  const pct = (s: number) => `${Math.max(0, (s / (end - start)) * 100)}%`;
-  const ride1 = c.first.arriveS - c.first.departS;
-  const walk = walkMin * 60;
-  const wait = c.second ? c.second.departS - c.first.arriveS - walk : 0;
-  const ride2 = c.second ? c.second.arriveS - c.second.departS : 0;
-  const icon = (kind: string) => (kind === "bus" ? "🚌" : "🚐");
+function spareText(min: number | null): string {
+  if (min === null) return "No connection";
+  const m = Math.floor(min);
+  return m <= 0 ? "Just makes it" : `${m} min to spare`;
+}
+
+const legName = (t: LegTrip) => (t.kind === "bus" ? `🚌 Bus ${t.label}` : `🚐 ${t.label}`);
+const liveText = (t: LegTrip) =>
+  t.kind === "bus" ? delayText(t.live ? (t.arriveS - t.scheduledArriveS) / 60 : null) : "";
+
+/** One stop on the timeline: time | dot | place + what happens next. */
+function Stop(props: { s: number; scheduledS?: number; place: string; children?: React.ReactNode; last?: boolean }) {
   return (
-    <div className="strip" role="img" aria-label={`Spare ${c.spareMin === null ? "none" : Math.round(c.spareMin)} min`}>
-      <div className={`seg ride ${c.first.kind}`} style={{ width: pct(ride1) }}>
-        {icon(c.first.kind)} {c.first.kind === "bus" ? c.first.label : ""}
+    <li className={`stop ${props.last ? "last" : ""}`}>
+      <Time s={props.s} scheduledS={props.scheduledS} className="mid" />
+      <span className="node" aria-hidden />
+      <div>
+        <div className="place">{props.place}</div>
+        {props.children && <div className="what">{props.children}</div>}
       </div>
-      <div className="seg walk" style={{ width: pct(walk) }}>
-        🚶
-      </div>
-      {c.second && wait > 0 && <div className={`seg wait ${spareTone(c.spareMin)}`} style={{ width: pct(wait) }} />}
-      {c.second && (
-        <div className={`seg ride ${c.second.kind}`} style={{ width: pct(ride2) }}>
-          {icon(c.second.kind)} {c.second.kind === "bus" ? c.second.label : ""}
-        </div>
-      )}
-    </div>
+    </li>
   );
 }
 
-function ConnectionCard({ c, walkMin }: { c: Connection; walkMin: number }) {
+function ConnectionCard(props: {
+  c: Connection;
+  walkMin: number;
+  places: [string, string, string, string];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { c, places } = props;
   const last = c.second ?? c.first;
+  const tone = spareTone(c.spareMin);
   return (
-    <li className={`card ${spareTone(c.spareMin)}`}>
-      <Times
-        departS={c.first.departS}
-        scheduledDepartS={c.first.scheduledDepartS}
-        arriveS={last.arriveS}
-        scheduledArriveS={last.scheduledArriveS}
-      />
-      <Strip c={c} walkMin={walkMin} />
-      <div className="legs">
-        <span>{clock(c.first.arriveS)}</span>
-        {c.second ? (
-          <span className={`spare ${spareTone(c.spareMin)}`}>+{Math.max(0, Math.round(c.spareMin ?? 0))}′</span>
-        ) : (
-          <span className="spare bad">✕</span>
-        )}
-        <span>{c.second ? clock(c.second.departS) : ""}</span>
-        <span className={`live ${c.first.live ? "on" : ""}`} aria-label={c.first.live ? "Live" : "Timetable only"} />
-      </div>
+    <li className={`card ${tone}`}>
+      <button className="card-head" onClick={props.onToggle} aria-expanded={props.open}>
+        <Times
+          departS={c.first.departS}
+          scheduledDepartS={c.first.scheduledDepartS}
+          arriveS={last.arriveS}
+          scheduledArriveS={last.scheduledArriveS}
+          nowS={secondsSinceMidnight()}
+        />
+        <div className="chips">
+          <Chip tone={tone}>{spareText(c.spareMin)}</Chip>
+          {c.first.kind === "bus" && (
+            <Chip tone={c.first.live ? delayTone((c.first.arriveS - c.first.scheduledArriveS) / 60) : "none"}>
+              {liveText(c.first)}
+            </Chip>
+          )}
+          <span className="expand">{props.open ? "▴" : "▾"}</span>
+        </div>
+      </button>
+      {props.open && (
+        <ol className="timeline">
+          <Stop s={c.first.departS} scheduledS={c.first.scheduledDepartS} place={places[0]}>
+            {legName(c.first)}
+          </Stop>
+          <Stop s={c.first.arriveS} scheduledS={c.first.scheduledArriveS} place={places[1]}>
+            🚶 {props.walkMin} min walk to {places[2]}
+          </Stop>
+          {c.second ? (
+            <>
+              <Stop s={c.second.departS} scheduledS={c.second.scheduledDepartS} place={places[2]}>
+                {legName(c.second)} · <span className={`spare-text ${tone}`}>{spareText(c.spareMin)}</span>
+              </Stop>
+              <Stop s={c.second.arriveS} scheduledS={c.second.scheduledArriveS} place={places[3]} last />
+            </>
+          ) : (
+            <li className="stop last">
+              <span />
+              <span className="node" aria-hidden />
+              <div className="what">No later connection today</div>
+            </li>
+          )}
+        </ol>
+      )}
     </li>
   );
 }
@@ -85,7 +113,7 @@ function LegEditor(props: {
         }
       }}
     >
-      <option value="bus">🚌</option>
+      <option value="bus">🚌 Bus</option>
       {props.shuttles.map((s) => (
         <option key={s.id} value={s.id}>
           🚐 {s.name}
@@ -120,6 +148,7 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
   const [pack, setPack] = useState<BusPack | null>(null);
   const [commute, setCommute] = useState<Commute>(commuteStore.get);
   const [editing, setEditing] = useState(false);
+  const [openKey, setOpenKey] = useState<string | null>(null);
   useEffect(() => {
     void loadPack().then(setPack);
   }, []);
@@ -134,16 +163,21 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
   );
 
   if (!pack) return <p className="notice">…</p>;
-  const name = (l: Leg) =>
-    l.kind === "bus" ? (groupStops(pack).find((g) => g.key === l.from)?.name ?? l.from) : l.from;
-  const lastStop = (l: Leg) =>
-    l.kind === "bus" ? (groupStops(pack).find((g) => g.key === l.to)?.name ?? l.to) : l.to;
+  const groups = groupStops(pack);
+  const place = (l: Leg, end: "from" | "to") =>
+    l.kind === "bus" ? (groups.find((g) => g.key === l[end])?.name ?? l[end]) : l[end];
+  const places: [string, string, string, string] = [
+    place(commute.legs[0], "from"),
+    place(commute.legs[0], "to"),
+    place(commute.legs[1], "from"),
+    place(commute.legs[1], "to"),
+  ];
 
   return (
     <section>
       <div className="pickers">
         <button className="route-title" onClick={() => setEditing(!editing)} aria-label="Edit commute">
-          {name(commute.legs[0])} → {lastStop(commute.legs[1])}
+          {places[0]} → {places[3]} <span className="muted">✎</span>
         </button>
         <button aria-label="Swap" onClick={() => update(reverse(commute))}>
           ⇄
@@ -151,6 +185,7 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
       </div>
       {editing && (
         <div className="sheet">
+          <small className="muted">First</small>
           <LegEditor
             leg={commute.legs[0]}
             pack={pack}
@@ -158,7 +193,7 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
             onChange={(l) => update({ ...commute, legs: [l, commute.legs[1]] })}
           />
           <label className="inline">
-            🚶
+            🚶 Walk
             <input
               type="number"
               min={0}
@@ -167,8 +202,9 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
               value={commute.walkMin}
               onChange={(e) => update({ ...commute, walkMin: Number(e.target.value) || 0 })}
             />
-            ′
+            min
           </label>
+          <small className="muted">Then</small>
           <LegEditor
             leg={commute.legs[1]}
             pack={pack}
@@ -180,9 +216,21 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
       <StatusRow at={at} loading={loading} stale={!!error} onRefresh={refresh} />
       {data && data.length === 0 && <p className="notice">—</p>}
       <ul>
-        {data?.map((c) => (
-          <ConnectionCard key={`${c.first.scheduledDepartS}-${c.first.label}`} c={c} walkMin={commute.walkMin} />
-        ))}
+        {data?.map((c, i) => {
+          const key = `${c.first.scheduledDepartS}-${c.first.label}`;
+          // The next trip is open by default; tap any other to see its steps.
+          const open = openKey === null ? i === 0 : openKey === key;
+          return (
+            <ConnectionCard
+              key={key}
+              c={c}
+              walkMin={commute.walkMin}
+              places={places}
+              open={open}
+              onToggle={() => setOpenKey(open ? "" : key)}
+            />
+          );
+        })}
       </ul>
     </section>
   );

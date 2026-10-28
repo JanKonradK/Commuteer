@@ -22,6 +22,7 @@ const pack: BusPack = {
     ["T1310", 0, 0, "Cavan", [[1, 1, 790, 790], [2, 4, 816, 816]]], // 13:10 -> 13:36
     ["Tmidnight", 0, 0, "Cavan", [[0, 1, 1450, 1450], [2, 4, 1476, 1476]]], // 24:10 = 00:10 next day
     ["Tnottoday", 0, 1, "Cavan", [[0, 1, 560, 560], [2, 4, 586, 586]]], // service starts tomorrow
+    ["Thome", 0, 0, "Athlone", [[2, 1, 660, 660], [0, 4, 686, 686]]], // 11:00 Ballymahon -> Athlone
   ],
 };
 
@@ -93,6 +94,18 @@ describe("shuttles", () => {
     ]);
   });
 
+  it("doesn't chain across a shift change", () => {
+    const shifts: Shuttle = {
+      ...shuttle,
+      rows: parseRows(`13:30 Inny Kayak Club
+13:45 West Yard
+14:00 HK Yard
+15:00 HK Yard
+15:15 Inny Kayak Club`),
+    };
+    expect(shuttleTrips(shifts, "West Yard", "Inny Kayak Club", NOW, 0)).toEqual([]);
+  });
+
   it("defaults to the most common hop", () => {
     expect(busiestPair(shuttle)).toEqual(["Inny Kayak Club", "West Yard"]);
   });
@@ -119,6 +132,17 @@ describe("connections", () => {
     // Bus arrives 09:36, +5 walk = 09:41 -> the 09:45 shuttle with 4 minutes to spare.
     expect(first.second?.departS).toBe(585 * 60);
     expect(first.spareMin).toBe(4);
+  });
+
+  it("only shows the latest first leg that makes each second leg", async () => {
+    globalThis.fetch = (async () => new Response(JSON.stringify({ trips: {} }))) as typeof fetch;
+    // Home: the 09:30 and 10:00 shuttles both make the 11:00 bus; only the 10:00 is worth showing.
+    const home = reverse(commute);
+    const early = new Date(2026, 9, 28, 9, 20);
+    const cs = await connections(home, pack, [shuttle], early);
+    const toBus = cs.filter((c) => c.second?.label === "466");
+    expect(toBus).toHaveLength(1);
+    expect(toBus[0].first.departS).toBe(600 * 60); // 10:00 shuttle
   });
 
   it("reverses the journey for the trip home", () => {

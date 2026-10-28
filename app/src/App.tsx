@@ -6,10 +6,10 @@ import { ShuttleView, useShuttles } from "./views/ShuttleView";
 import { TrainView } from "./views/TrainView";
 
 const TABS = [
-  { id: "commute", icon: "⭐", label: "My commute" },
+  { id: "commute", icon: "⭐", label: "Commute" },
   { id: "train", icon: "🚆", label: "Trains" },
   { id: "bus", icon: "🚌", label: "Buses" },
-  { id: "shuttle", icon: "🚐", label: "My timetables" },
+  { id: "shuttle", icon: "🚐", label: "Shuttles" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
@@ -29,11 +29,11 @@ export default function App() {
             key={t.id}
             role="tab"
             aria-selected={tab === t.id}
-            aria-label={t.label}
             className={tab === t.id ? "on" : ""}
             onClick={() => go(t.id)}
           >
-            {t.icon}
+            <span className="tab-icon">{t.icon}</span>
+            <span className="tab-label">{t.label}</span>
           </button>
         ))}
       </nav>

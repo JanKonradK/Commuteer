@@ -5,7 +5,7 @@ import { DelayModel, type ModelJson } from "../lib/model";
 import { clock, type Prediction } from "../lib/predict";
 import { load, save } from "../lib/storage";
 import modelJson from "../model/delay-model.json";
-import { REFRESH_MS, StatusRow, Times, useAutoRefresh } from "../ui";
+import { Chip, delayText, delayTone, REFRESH_MS, StatusRow, Times, useAutoRefresh, secondsSinceMidnight } from "../ui";
 
 const FALLBACK_STATIONS: Station[] = [
   { code: "ATLNE", name: "Athlone", codes: ["ATLNE"] },
@@ -44,9 +44,10 @@ function ArrivalWindow({ p }: { p: Prediction }) {
   );
 }
 
-function TrainCard({ p }: { p: Prediction }) {
+function TrainCard({ p, legend }: { p: Prediction; legend: boolean }) {
   const [lo, mid, hi] = p.arrivalDelay;
   const [h, m] = p.train.schDepart.split(":").map(Number);
+  const chance = Math.round(p.chanceOnTime * 10) * 10; // nearest 10%
   return (
     <li className={`card ${tone(p)}`} aria-label={`Train ${p.train.code}`}>
       <Times
@@ -54,11 +55,23 @@ function TrainCard({ p }: { p: Prediction }) {
         scheduledDepartS={(h * 60 + m) * 60}
         arriveS={p.scheduledArrivalS + mid * 60}
         scheduledArriveS={p.scheduledArrivalS}
+        nowS={secondsSinceMidnight()}
       />
-      <span className="span">
-        {clock(p.scheduledArrivalS + lo * 60)}–{clock(p.scheduledArrivalS + hi * 60)}
-      </span>
+      <div className="chips">
+        <Chip tone={delayTone(p.train.lateMin)}>{delayText(p.train.lateMin)}</Chip>
+        <Chip tone={tone(p)}>{chance}% chance on time</Chip>
+      </div>
       <ArrivalWindow p={p} />
+      <div className="window-labels">
+        <span>
+          Likely arrival {clock(p.scheduledArrivalS + lo * 60)}–{clock(p.scheduledArrivalS + hi * 60)}
+        </span>
+        {legend && (
+          <span className="legend">
+            <i className="tick-key" /> timetable
+          </span>
+        )}
+      </div>
     </li>
   );
 }
@@ -122,8 +135,8 @@ export function TrainView() {
           <p className="notice">No direct trains · 90 min</p>
         ) : (
           <ul>
-            {result.predictions.map((p) => (
-              <TrainCard key={`${p.train.code}-${p.train.trainDate}`} p={p} />
+            {result.predictions.map((p, i) => (
+              <TrainCard key={`${p.train.code}-${p.train.trainDate}`} p={p} legend={i === 0} />
             ))}
           </ul>
         ))}
