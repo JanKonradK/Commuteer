@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArrayOfObjTrainPositions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://api.irishrail.ie/realtime/">
+  <objTrainPositions>
+    <TrainStatus>N</TrainStatus>
+    <TrainLatitude>51.9018</TrainLatitude>
+    <TrainLongitude>-8.4582</TrainLongitude>
+    <TrainCode>D501</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>D501\nCork to Cobh\nExpected Departure 05:30</PublicMessage>
+    <Direction>To Cobh</Direction>
+  </objTrainPositions>
+  <objTrainPositions>
+    <TrainStatus>N</TrainStatus>
+    <TrainLatitude>52.6587</TrainLatitude>
+    <TrainLongitude>-8.62397</TrainLongitude>
+    <TrainCode>A401</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>A401\nLimerick to Dublin Heuston\nExpected Departure 05:25</PublicMessage>
+    <Direction>To Dublin Heuston</Direction>
+  </objTrainPositions>
+  <objTrainPositions>
+    <TrainStatus>N</TrainStatus>
+    <TrainLatitude>53.0371</TrainLatitude>
+    <TrainLongitude>-7.30086</TrainLongitude>
+    <TrainCode>P200</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>P200\nPortlaoise to Dublin Heuston\nExpected Departure 05:27</PublicMessage>
+    <Direction>To Dublin Heuston</Direction>
+  </objTrainPositions>
+  <objTrainPositions>
+    <TrainStatus>N</TrainStatus>
+    <TrainLatitude>53.2043</TrainLatitude>
+    <TrainLongitude>-6.10046</TrainLongitude>
+    <TrainCode>E800</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>E800\nBray to Malahide\nExpected Departure 05:32</PublicMessage>
+    <Direction>Northbound</Direction>
+  </objTrainPositions>
+  <objTrainPositions>
+    <TrainStatus>N</TrainStatus>
+    <TrainLatitude>53.2736</TrainLatitude>
+    <TrainLongitude>-9.04696</TrainLongitude>
+    <TrainCode>A703</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>A703\nGalway to Dublin Heuston\nExpected Departure 05:25</PublicMessage>
+    <Direction>To Dublin Heuston</Direction>
+  </objTrainPositions>
+  <objTrainPositions>
+    <TrainStatus>N</TrainStatus>
+    <TrainLatitude>53.3531</TrainLatitude>
+    <TrainLongitude>-6.24591</TrainLongitude>
+    <TrainCode>D900</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>D900\nDublin Connolly to Maynooth\nExpected Departure 05:20</PublicMessage>
+    <Direction>Northbound</Direction>
+  </objTrainPositions>
+  <objTrainPositions>
+    <TrainStatus>N</TrainStatus>
+    <TrainLatitude>53.7955</TrainLatitude>
+    <TrainLongitude>-9.50885</TrainLongitude>
+    <TrainCode>A801</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>A801\nWestport to Dublin Heuston\nExpected Departure 05:15</PublicMessage>
+    <Direction>To Dublin Heuston</Direction>
+  </objTrainPositions>
+  <objTrainPositions>
+    <TrainStatus>N</TrainStatus>
+    <TrainLatitude>54.0007</TrainLatitude>
+    <TrainLongitude>-6.41291</TrainLongitude>
+    <TrainCode>P600</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>P600\nDundalk to Grand Canal Dock\nExpected Departure 05:27</PublicMessage>
+    <Direction>To Grand Canal Dock</Direction>
+  </objTrainPositions>
+  <objTrainPositions>
+    <TrainStatus>R</TrainStatus>
+    <TrainLatitude>53.4273</TrainLatitude>
+    <TrainLongitude>-7.93683</TrainLongitude>
+    <TrainCode>A701</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>A701\n05:15 - Athlone to Dublin Heuston (0 mins late)\nDeparted Athlone next stop Clara</PublicMessage>
+    <Direction>To Dublin Heuston</Direction>
+  </objTrainPositions>
+  <objTrainPositions>
+    <TrainStatus>R</TrainStatus>
+    <TrainLatitude>53.712</TrainLatitude>
+    <TrainLongitude>-6.33538</TrainLongitude>
+    <TrainCode>P601</TrainCode>
+    <TrainDate>28 Oct 2026</TrainDate>
+    <PublicMessage>P601\n06:22 - Drogheda to Dublin Pearse (-97 mins late)\nDeparted Drogheda next stop Laytown</PublicMessage>
+    <Direction>Southbound</Direction>
+  </objTrainPositions>
+</ArrayOfObjTrainPositions>

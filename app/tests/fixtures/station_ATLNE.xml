@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArrayOfObjStationData xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://api.irishrail.ie/realtime/">
+  <objStationData>
+    <Servertime>2026-10-28T08:18:48.12</Servertime>
+    <Traincode>A707 </Traincode>
+    <Stationfullname>Athlone</Stationfullname>
+    <Stationcode>ATLNE</Stationcode>
+    <Querytime>08:18:48</Querytime>
+    <Traindate>28 Oct 2026</Traindate>
+    <Origin>Galway</Origin>
+    <Destination>Dublin Heuston</Destination>
+    <Origintime>07:30</Origintime>
+    <Destinationtime>09:58</Destinationtime>
+    <Status>No Information</Status>
+    <Lastlocation />
+    <Duein>17</Duein>
+    <Late>0</Late>
+    <Exparrival>08:33</Exparrival>
+    <Expdepart>08:35</Expdepart>
+    <Scharrival>08:33</Scharrival>
+    <Schdepart>08:35</Schdepart>
+    <Direction>To Dublin Heuston</Direction>
+    <Traintype>Train</Traintype>
+    <Locationtype>S</Locationtype>
+  </objStationData>
+  <objStationData>
+    <Servertime>2026-10-28T08:18:48.12</Servertime>
+    <Traincode>A803 </Traincode>
+    <Stationfullname>Athlone</Stationfullname>
+    <Stationcode>ATLNE</Stationcode>
+    <Querytime>08:18:48</Querytime>
+    <Traindate>28 Oct 2026</Traindate>
+    <Origin>Westport</Origin>
+    <Destination>Dublin Heuston</Destination>
+    <Origintime>07:15</Origintime>
+    <Destinationtime>10:32</Destinationtime>
+    <Status>No Information</Status>
+    <Lastlocation />
+    <Duein>54</Duein>
+    <Late>0</Late>
+    <Exparrival>09:04</Exparrival>
+    <Expdepart>09:12</Expdepart>
+    <Scharrival>09:04</Scharrival>
+    <Schdepart>09:12</Schdepart>
+    <Direction>To Dublin Heuston</Direction>
+    <Traintype>Train</Traintype>
+    <Locationtype>S</Locationtype>
+  </objStationData>
+  <objStationData>
+    <Servertime>2026-10-28T08:18:48.12</Servertime>
+    <Traincode>A702 </Traincode>
+    <Stationfullname>Athlone</Stationfullname>
+    <Stationcode>ATLNE</Stationcode>
+    <Querytime>08:18:48</Querytime>
+    <Traindate>28 Oct 2026</Traindate>
+    <Origin>Dublin Heuston</Origin>
+    <Destination>Galway</Destination>
+    <Origintime>07:35</Origintime>
+    <Destinationtime>10:15</Destinationtime>
+    <Status>En Route</Status>
+    <Lastlocation>Departed Monasterevin</Lastlocation>
+    <Duein>62</Duein>
+    <Late>8</Late>
+    <Exparrival>09:17</Exparrival>
+    <Expdepart>09:20</Expdepart>
+    <Scharrival>09:09</Scharrival>
+    <Schdepart>09:12</Schdepart>
+    <Direction>To Galway</Direction>
+    <Traintype>Train</Traintype>
+    <Locationtype>S</Locationtype>
+  </objStationData>
+  <objStationData>
+    <Servertime>2026-10-28T08:18:48.12</Servertime>
+    <Traincode>A802 </Traincode>
+    <Stationfullname>Athlone</Stationfullname>
+    <Stationcode>ATLNE</Stationcode>
+    <Querytime>08:18:48</Querytime>
+    <Traindate>28 Oct 2026</Traindate>
+    <Origin>Athlone</Origin>
+    <Destination>Westport</Destination>
+    <Origintime>09:15</Origintime>
+    <Destinationtime>11:02</Destinationtime>
+    <Status>En Route</Status>
+    <Lastlocation>Departed Athlone</Lastlocation>
+    <Duein>57</Duein>
+    <Late>0</Late>
+    <Exparrival>00:00</Exparrival>
+    <Expdepart>09:15</Expdepart>
+    <Scharrival>00:00</Scharrival>
+    <Schdepart>09:15</Schdepart>
+    <Direction>To Westport</Direction>
+    <Traintype>Train</Traintype>
+    <Locationtype>O</Locationtype>
+  </objStationData>
+</ArrayOfObjStationData>

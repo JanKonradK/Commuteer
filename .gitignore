@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+data/
+dist/
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+infra/terraform/build/
+infra/terraform/terraform.tfvars
+.venv-ml/
+mlflow.db
+mlruns/
+mlartifacts/
+infra/terraform/tfplan

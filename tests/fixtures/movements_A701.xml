@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArrayOfObjTrainMovements xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://api.irishrail.ie/realtime/">
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>ATLNE</LocationCode>
+    <LocationFullName>Athlone</LocationFullName>
+    <LocationOrder>1</LocationOrder>
+    <LocationType>O</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>00:00:00</ScheduledArrival>
+    <ScheduledDeparture>05:15:00</ScheduledDeparture>
+    <ExpectedArrival>00:00:00</ExpectedArrival>
+    <ExpectedDeparture>05:15:00</ExpectedDeparture>
+    <Arrival>04:39:06</Arrival>
+    <Departure>05:15:48</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>C</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>CYDNN</LocationCode>
+    <LocationFullName>Clonydonnin</LocationFullName>
+    <LocationOrder>2</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>05:22:30</ScheduledArrival>
+    <ScheduledDeparture>05:22:30</ScheduledDeparture>
+    <ExpectedArrival>05:23:18</ExpectedArrival>
+    <ExpectedDeparture>05:22:30</ExpectedDeparture>
+    <Arrival>05:22:30</Arrival>
+    <Departure>05:22:36</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>CLARA</LocationCode>
+    <LocationFullName>Clara</LocationFullName>
+    <LocationOrder>3</LocationOrder>
+    <LocationType>S</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>05:29:30</ScheduledArrival>
+    <ScheduledDeparture>05:31:00</ScheduledDeparture>
+    <ExpectedArrival>05:29:36</ExpectedArrival>
+    <ExpectedDeparture>05:31:00</ExpectedDeparture>
+    <Arrival>05:29:30</Arrival>
+    <Departure>05:31:30</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>N</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>TMORE</LocationCode>
+    <LocationFullName>Tullamore</LocationFullName>
+    <LocationOrder>4</LocationOrder>
+    <LocationType>S</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>05:38:30</ScheduledArrival>
+    <ScheduledDeparture>05:40:00</ScheduledDeparture>
+    <ExpectedArrival>05:39:00</ExpectedArrival>
+    <ExpectedDeparture>05:40:12</ExpectedDeparture>
+    <Arrival>05:38:42</Arrival>
+    <Departure>05:40:42</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>GSHIL</LocationCode>
+    <LocationFullName>Geashill</LocationFullName>
+    <LocationOrder>5</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>05:47:00</ScheduledArrival>
+    <ScheduledDeparture>05:47:00</ScheduledDeparture>
+    <ExpectedArrival>05:47:42</ExpectedArrival>
+    <ExpectedDeparture>05:47:00</ExpectedDeparture>
+    <Arrival>05:47:00</Arrival>
+    <Departure>05:47:06</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>PN252</LocationCode>
+    <LocationFullName />
+    <LocationOrder>6</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>05:55:30</ScheduledArrival>
+    <ScheduledDeparture>05:55:30</ScheduledDeparture>
+    <ExpectedArrival>05:55:36</ExpectedArrival>
+    <ExpectedDeparture>05:55:36</ExpectedDeparture>
+    <Arrival />
+    <Departure />
+    <AutoArrival />
+    <AutoDepart />
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>PTRTN</LocationCode>
+    <LocationFullName>Portarlington</LocationFullName>
+    <LocationOrder>7</LocationOrder>
+    <LocationType>S</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>05:57:30</ScheduledArrival>
+    <ScheduledDeparture>05:58:30</ScheduledDeparture>
+    <ExpectedArrival>05:57:36</ExpectedArrival>
+    <ExpectedDeparture>05:55:48</ExpectedDeparture>
+    <Arrival>05:54:48</Arrival>
+    <Departure>05:58:24</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>MONVN</LocationCode>
+    <LocationFullName>Monasterevin</LocationFullName>
+    <LocationOrder>8</LocationOrder>
+    <LocationType>S</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:03:30</ScheduledArrival>
+    <ScheduledDeparture>06:04:30</ScheduledDeparture>
+    <ExpectedArrival>06:03:24</ExpectedArrival>
+    <ExpectedDeparture>06:00:12</ExpectedDeparture>
+    <Arrival>05:59:12</Arrival>
+    <Departure>06:05:12</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>CHVLJ</LocationCode>
+    <LocationFullName>Cherryville Junction</LocationFullName>
+    <LocationOrder>9</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:08:30</ScheduledArrival>
+    <ScheduledDeparture>06:08:30</ScheduledDeparture>
+    <ExpectedArrival>06:09:12</ExpectedArrival>
+    <ExpectedDeparture>06:08:18</ExpectedDeparture>
+    <Arrival>06:08:18</Arrival>
+    <Departure>06:08:24</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>KDARE</LocationCode>
+    <LocationFullName>Kildare</LocationFullName>
+    <LocationOrder>10</LocationOrder>
+    <LocationType>S</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:13:00</ScheduledArrival>
+    <ScheduledDeparture>06:14:00</ScheduledDeparture>
+    <ExpectedArrival>06:12:54</ExpectedArrival>
+    <ExpectedDeparture>06:12:24</ExpectedDeparture>
+    <Arrival>06:11:24</Arrival>
+    <Departure>06:14:06</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>CURAH</LocationCode>
+    <LocationFullName>Curragh</LocationFullName>
+    <LocationOrder>11</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:17:00</ScheduledArrival>
+    <ScheduledDeparture>06:17:00</ScheduledDeparture>
+    <ExpectedArrival>06:17:06</ExpectedArrival>
+    <ExpectedDeparture>06:17:06</ExpectedDeparture>
+    <Arrival />
+    <Departure />
+    <AutoArrival />
+    <AutoDepart />
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>NBRGE</LocationCode>
+    <LocationFullName>Newbridge</LocationFullName>
+    <LocationOrder>12</LocationOrder>
+    <LocationType>S</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:19:30</ScheduledArrival>
+    <ScheduledDeparture>06:20:30</ScheduledDeparture>
+    <ExpectedArrival>06:19:36</ExpectedArrival>
+    <ExpectedDeparture>06:20:00</ExpectedDeparture>
+    <Arrival>06:19:00</Arrival>
+    <Departure>06:20:42</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>HK176</LocationCode>
+    <LocationFullName>HK176</LocationFullName>
+    <LocationOrder>13</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:24:00</ScheduledArrival>
+    <ScheduledDeparture>06:24:00</ScheduledDeparture>
+    <ExpectedArrival>06:24:12</ExpectedArrival>
+    <ExpectedDeparture>06:24:12</ExpectedDeparture>
+    <Arrival />
+    <Departure />
+    <AutoArrival />
+    <AutoDepart />
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>SALNS</LocationCode>
+    <LocationFullName>Sallins</LocationFullName>
+    <LocationOrder>14</LocationOrder>
+    <LocationType>S</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:26:30</ScheduledArrival>
+    <ScheduledDeparture>06:27:30</ScheduledDeparture>
+    <ExpectedArrival>06:26:42</ExpectedArrival>
+    <ExpectedDeparture>06:27:36</ExpectedDeparture>
+    <Arrival>06:26:36</Arrival>
+    <Departure>06:29:00</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>HK156</LocationCode>
+    <LocationFullName>HK156</LocationFullName>
+    <LocationOrder>15</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:31:30</ScheduledArrival>
+    <ScheduledDeparture>06:31:30</ScheduledDeparture>
+    <ExpectedArrival>06:33:00</ExpectedArrival>
+    <ExpectedDeparture>06:33:00</ExpectedDeparture>
+    <Arrival />
+    <Departure />
+    <AutoArrival />
+    <AutoDepart />
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>HK152</LocationCode>
+    <LocationFullName>HK152</LocationFullName>
+    <LocationOrder>16</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:34:00</ScheduledArrival>
+    <ScheduledDeparture>06:34:00</ScheduledDeparture>
+    <ExpectedArrival>06:35:30</ExpectedArrival>
+    <ExpectedDeparture>06:35:30</ExpectedDeparture>
+    <Arrival />
+    <Departure />
+    <AutoArrival />
+    <AutoDepart />
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>HZLCH</LocationCode>
+    <LocationFullName>Hazelhatch</LocationFullName>
+    <LocationOrder>17</LocationOrder>
+    <LocationType>S</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:35:00</ScheduledArrival>
+    <ScheduledDeparture>06:36:00</ScheduledDeparture>
+    <ExpectedArrival>06:36:30</ExpectedArrival>
+    <ExpectedDeparture>06:36:30</ExpectedDeparture>
+    <Arrival>06:35:30</Arrival>
+    <Departure>06:37:24</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>ADMTN</LocationCode>
+    <LocationFullName>Adamstown</LocationFullName>
+    <LocationOrder>18</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:39:00</ScheduledArrival>
+    <ScheduledDeparture>06:39:00</ScheduledDeparture>
+    <ExpectedArrival>06:40:24</ExpectedArrival>
+    <ExpectedDeparture>06:40:30</ExpectedDeparture>
+    <Arrival>06:40:30</Arrival>
+    <Departure>06:40:48</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>KISHO</LocationCode>
+    <LocationFullName>Kishoge</LocationFullName>
+    <LocationOrder>19</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:40:30</ScheduledArrival>
+    <ScheduledDeparture>06:40:30</ScheduledDeparture>
+    <ExpectedArrival>06:42:18</ExpectedArrival>
+    <ExpectedDeparture>06:42:24</ExpectedDeparture>
+    <Arrival>06:42:24</Arrival>
+    <Departure>06:42:42</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>CLDKN</LocationCode>
+    <LocationFullName>Clondalkin</LocationFullName>
+    <LocationOrder>20</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:41:30</ScheduledArrival>
+    <ScheduledDeparture>06:41:30</ScheduledDeparture>
+    <ExpectedArrival>06:43:42</ExpectedArrival>
+    <ExpectedDeparture>06:44:00</ExpectedDeparture>
+    <Arrival>06:44:00</Arrival>
+    <Departure>06:44:30</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>CHORC</LocationCode>
+    <LocationFullName>Park West and Cherry Orchard</LocationFullName>
+    <LocationOrder>21</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:43:30</ScheduledArrival>
+    <ScheduledDeparture>06:43:30</ScheduledDeparture>
+    <ExpectedArrival>06:46:30</ExpectedArrival>
+    <ExpectedDeparture>06:45:00</ExpectedDeparture>
+    <Arrival>06:45:00</Arrival>
+    <Departure>06:45:42</Departure>
+    <AutoArrival>1</AutoArrival>
+    <AutoDepart>1</AutoDepart>
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>HK106</LocationCode>
+    <LocationFullName>HK106</LocationFullName>
+    <LocationOrder>22</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:44:00</ScheduledArrival>
+    <ScheduledDeparture>06:44:00</ScheduledDeparture>
+    <ExpectedArrival>06:46:12</ExpectedArrival>
+    <ExpectedDeparture>06:46:12</ExpectedDeparture>
+    <Arrival />
+    <Departure />
+    <AutoArrival />
+    <AutoDepart />
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>ICORE</LocationCode>
+    <LocationFullName>Inchicore</LocationFullName>
+    <LocationOrder>23</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:45:30</ScheduledArrival>
+    <ScheduledDeparture>06:45:30</ScheduledDeparture>
+    <ExpectedArrival>06:47:42</ExpectedArrival>
+    <ExpectedDeparture>06:47:42</ExpectedDeparture>
+    <Arrival />
+    <Departure />
+    <AutoArrival />
+    <AutoDepart />
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>IBJCT</LocationCode>
+    <LocationFullName>Islandbridge Junction</LocationFullName>
+    <LocationOrder>24</LocationOrder>
+    <LocationType>T</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:47:30</ScheduledArrival>
+    <ScheduledDeparture>06:47:30</ScheduledDeparture>
+    <ExpectedArrival>06:49:42</ExpectedArrival>
+    <ExpectedDeparture>06:49:42</ExpectedDeparture>
+    <Arrival />
+    <Departure />
+    <AutoArrival />
+    <AutoDepart />
+    <StopType>-</StopType>
+  </objTrainMovements>
+  <objTrainMovements>
+    <TrainCode>A701 </TrainCode>
+    <TrainDate>27 Oct 2026</TrainDate>
+    <LocationCode>HSTON</LocationCode>
+    <LocationFullName>Dublin Heuston</LocationFullName>
+    <LocationOrder>25</LocationOrder>
+    <LocationType>D</LocationType>
+    <TrainOrigin>Athlone</TrainOrigin>
+    <TrainDestination>Dublin Heuston</TrainDestination>
+    <ScheduledArrival>06:53:00</ScheduledArrival>
+    <ScheduledDeparture>00:00:00</ScheduledDeparture>
+    <ExpectedArrival>06:55:12</ExpectedArrival>
+    <ExpectedDeparture>00:00:00</ExpectedDeparture>
+    <Arrival>06:52:00</Arrival>
+    <Departure />
+    <AutoArrival>0</AutoArrival>
+    <AutoDepart />
+    <StopType>-</StopType>
+  </objTrainMovements>
+</ArrayOfObjTrainMovements>

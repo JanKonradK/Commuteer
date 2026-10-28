@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Commuteer</string>
+    <string name="title_activity_main">Commuteer</string>
+    <string name="package_name">com.jankonradk.commuteer</string>
+    <string name="custom_url_scheme">com.jankonradk.commuteer</string>
+</resources>

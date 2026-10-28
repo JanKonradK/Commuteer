@@ -1,0 +1,552 @@
+[
+ {
+  "categorical": {
+   "from_station": "ENFLD",
+   "to_station": "DCDRA",
+   "route": "Longford > Dublin Pearse",
+   "service_type": "P",
+   "weekday": "3"
+  },
+  "numeric": {
+   "current_delay_min": 2.0,
+   "delay_trend_min": 0.19999999999999996,
+   "remaining_sched_min": 64.0,
+   "stops_between": 11.0,
+   "hour_sin": 0.9575713608048145,
+   "hour_cos": -0.28819626813408905
+  },
+  "expected_change": [
+   -4.52776,
+   -2.60967,
+   1.13741
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "BYSDE",
+   "to_station": "CNLLY",
+   "route": "Howth > Greystones",
+   "service_type": "E",
+   "weekday": "4"
+  },
+  "numeric": {
+   "current_delay_min": 0.9,
+   "delay_trend_min": 0.4,
+   "remaining_sched_min": 19.5,
+   "stops_between": 6.0,
+   "hour_sin": -0.26303121445797495,
+   "hour_cos": -0.9647873238288129
+  },
+  "expected_change": [
+   -1.6375,
+   -0.20678,
+   2.69487
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "KLSTR",
+   "to_station": "CNLLY",
+   "route": "Howth > Greystones",
+   "service_type": "E",
+   "weekday": "3"
+  },
+  "numeric": {
+   "current_delay_min": 9.3,
+   "delay_trend_min": 0.20000000000000107,
+   "remaining_sched_min": 8.0,
+   "stops_between": 1.0,
+   "hour_sin": 0.432479206330166,
+   "hour_cos": -0.9016439075888162
+  },
+  "expected_change": [
+   -2.73672,
+   -1.43368,
+   0.81788
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "GLGRY",
+   "to_station": "SKILL",
+   "route": "Malahide > Greystones",
+   "service_type": "E",
+   "weekday": "2"
+  },
+  "numeric": {
+   "current_delay_min": 4.3,
+   "delay_trend_min": -0.20000000000000018,
+   "remaining_sched_min": 9.5,
+   "stops_between": 2.0,
+   "hour_sin": -0.3522500479212332,
+   "hour_cos": -0.9359059267573258
+  },
+  "expected_change": [
+   -1.70149,
+   -1.25134,
+   -0.74564
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "HWTHJ",
+   "to_station": "RLUSK",
+   "route": "Grand Canal Dock > Dundalk",
+   "service_type": "D",
+   "weekday": "5"
+  },
+  "numeric": {
+   "current_delay_min": 2.5,
+   "delay_trend_min": -1.5999999999999996,
+   "remaining_sched_min": 17.5,
+   "stops_between": 4.0,
+   "hour_sin": 0.01308959557134444,
+   "hour_cos": 0.999914327574007
+  },
+  "expected_change": [
+   -0.67178,
+   0.73277,
+   3.5241
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "CMINE",
+   "to_station": "CLSLA",
+   "route": "Dublin Connolly > Maynooth",
+   "service_type": "D",
+   "weekday": "5"
+  },
+  "numeric": {
+   "current_delay_min": 9.1,
+   "delay_trend_min": -0.3000000000000007,
+   "remaining_sched_min": 3.5,
+   "stops_between": 0.0,
+   "hour_sin": -0.938191335922484,
+   "hour_cos": -0.34611705707749335
+  },
+  "expected_change": [
+   -1.39815,
+   -0.96704,
+   -0.42342
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "PHNPK",
+   "to_station": "MYNTH",
+   "route": "Dublin Connolly > Maynooth",
+   "service_type": "D",
+   "weekday": "0"
+  },
+  "numeric": {
+   "current_delay_min": 2.9,
+   "delay_trend_min": -0.6000000000000001,
+   "remaining_sched_min": 28.0,
+   "stops_between": 5.0,
+   "hour_sin": -0.6883545756937541,
+   "hour_cos": -0.7253743710122875
+  },
+  "expected_change": [
+   -4.87296,
+   -3.25216,
+   -1.25102
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "KILNY",
+   "to_station": "SEAPT",
+   "route": "Greystones > Howth",
+   "service_type": "E",
+   "weekday": "2"
+  },
+  "numeric": {
+   "current_delay_min": 2.4,
+   "delay_trend_min": 0.7,
+   "remaining_sched_min": 16.0,
+   "stops_between": 5.0,
+   "hour_sin": -0.10018806161207613,
+   "hour_cos": -0.9949685182509117
+  },
+  "expected_change": [
+   -1.38189,
+   -0.59029,
+   0.37891
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "HSTON",
+   "to_station": "KISHO",
+   "route": "Dublin Heuston > Kildare",
+   "service_type": "D",
+   "weekday": "1"
+  },
+  "numeric": {
+   "current_delay_min": 0.0,
+   "delay_trend_min": 0.0,
+   "remaining_sched_min": 14.0,
+   "stops_between": 2.0,
+   "hour_sin": -0.21643961393810288,
+   "hour_cos": 0.9762960071199334
+  },
+  "expected_change": [
+   -1.16658,
+   0.01581,
+   1.69094
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "KBRCK",
+   "to_station": "BTSTN",
+   "route": "Malahide > Greystones",
+   "service_type": "E",
+   "weekday": "4"
+  },
+  "numeric": {
+   "current_delay_min": 2.7,
+   "delay_trend_min": -0.2999999999999998,
+   "remaining_sched_min": 33.0,
+   "stops_between": 11.0,
+   "hour_sin": -0.932796367779922,
+   "hour_cos": -0.36040385161175026
+  },
+  "expected_change": [
+   -3.81804,
+   -2.23531,
+   0.53104
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "CLDKN",
+   "to_station": "HZLCH",
+   "route": "Dublin Connolly > Newbridge",
+   "service_type": "D",
+   "weekday": "4"
+  },
+  "numeric": {
+   "current_delay_min": 0.4,
+   "delay_trend_min": -0.4,
+   "remaining_sched_min": 11.5,
+   "stops_between": 2.0,
+   "hour_sin": -0.9659258262890684,
+   "hour_cos": 0.2588190451025203
+  },
+  "expected_change": [
+   -1.77557,
+   -1.16491,
+   -0.38307
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "TARA",
+   "to_station": "RAHNY",
+   "route": "Bray > Howth",
+   "service_type": "E",
+   "weekday": "4"
+  },
+  "numeric": {
+   "current_delay_min": 3.2,
+   "delay_trend_min": -0.7999999999999998,
+   "remaining_sched_min": 14.5,
+   "stops_between": 4.0,
+   "hour_sin": 0.7674449639791252,
+   "hour_cos": -0.6411148315731584
+  },
+  "expected_change": [
+   -2.44492,
+   -0.52273,
+   2.23129
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "SIDNY",
+   "to_station": "LDWNE",
+   "route": "Greystones > Howth",
+   "service_type": "E",
+   "weekday": "3"
+  },
+  "numeric": {
+   "current_delay_min": 0.8,
+   "delay_trend_min": -0.3999999999999999,
+   "remaining_sched_min": 4.0,
+   "stops_between": 1.0,
+   "hour_sin": -0.10235850603495629,
+   "hour_cos": 0.9947475741323986
+  },
+  "expected_change": [
+   -1.1718,
+   -0.77078,
+   -0.30243
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "BROCK",
+   "to_station": "KILNY",
+   "route": "Malahide > Bray",
+   "service_type": "E",
+   "weekday": "3"
+  },
+  "numeric": {
+   "current_delay_min": 9.1,
+   "delay_trend_min": 0.7999999999999989,
+   "remaining_sched_min": 18.0,
+   "stops_between": 6.0,
+   "hour_sin": -0.9537169507482267,
+   "hour_cos": -0.3007057995042738
+  },
+  "expected_change": [
+   -1.89574,
+   -0.49248,
+   1.10976
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "ADMTN",
+   "to_station": "KISHO",
+   "route": "Hazelhatch > Grand Canal Dock",
+   "service_type": "P",
+   "weekday": "4"
+  },
+  "numeric": {
+   "current_delay_min": 0.8,
+   "delay_trend_min": -0.3999999999999999,
+   "remaining_sched_min": 2.5,
+   "stops_between": 0.0,
+   "hour_sin": -0.31316380648374953,
+   "hour_cos": 0.949699126201877
+  },
+  "expected_change": [
+   -1.08913,
+   -0.63601,
+   -0.08369
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "M3WAY",
+   "to_station": "CNOCK",
+   "route": "M3 Parkway > Dublin Connolly",
+   "service_type": "P",
+   "weekday": "2"
+  },
+  "numeric": {
+   "current_delay_min": 0.8,
+   "delay_trend_min": 0.0,
+   "remaining_sched_min": 17.0,
+   "stops_between": 4.0,
+   "hour_sin": -0.9063077870366498,
+   "hour_cos": 0.4226182617406996
+  },
+  "expected_change": [
+   -2.23891,
+   -1.35681,
+   -0.19141
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "DCDRA",
+   "to_station": "PELTN",
+   "route": "Dublin Connolly > Maynooth",
+   "service_type": "D",
+   "weekday": "5"
+  },
+  "numeric": {
+   "current_delay_min": 1.2,
+   "delay_trend_min": 0.29999999999999993,
+   "remaining_sched_min": 6.5,
+   "stops_between": 1.0,
+   "hour_sin": -0.770235040753384,
+   "hour_cos": -0.6377601288851733
+  },
+  "expected_change": [
+   -1.39599,
+   -0.95871,
+   -0.32036
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "BYSDE",
+   "to_station": "KBRCK",
+   "route": "Howth > Bray",
+   "service_type": "E",
+   "weekday": "0"
+  },
+  "numeric": {
+   "current_delay_min": 1.7,
+   "delay_trend_min": 1.0,
+   "remaining_sched_min": 4.5,
+   "stops_between": 1.0,
+   "hour_sin": -0.40474262968294517,
+   "hour_cos": 0.9144306445637823
+  },
+  "expected_change": [
+   -1.24571,
+   -0.79964,
+   -0.17373
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "MHIDE",
+   "to_station": "DGHDA",
+   "route": "Grand Canal Dock > Dundalk",
+   "service_type": "D",
+   "weekday": "1"
+  },
+  "numeric": {
+   "current_delay_min": -0.4,
+   "delay_trend_min": -0.2,
+   "remaining_sched_min": 44.0,
+   "stops_between": 6.0,
+   "hour_sin": -0.4364092406733422,
+   "hour_cos": 0.8997482840522214
+  },
+  "expected_change": [
+   -3.37238,
+   -2.10616,
+   0.11519
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "WBROK",
+   "to_station": "SEAPT",
+   "route": "Bray > Howth",
+   "service_type": "E",
+   "weekday": "2"
+  },
+  "numeric": {
+   "current_delay_min": 1.4,
+   "delay_trend_min": 0.9999999999999999,
+   "remaining_sched_min": 23.0,
+   "stops_between": 7.0,
+   "hour_sin": 0.8314696123025451,
+   "hour_cos": -0.5555702330196023
+  },
+  "expected_change": [
+   -1.63476,
+   -0.38645,
+   1.57995
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "PERSE",
+   "to_station": "GSTON",
+   "route": "Grand Canal Dock > Drogheda",
+   "service_type": "D",
+   "weekday": "4"
+  },
+  "numeric": {
+   "current_delay_min": 8.9,
+   "delay_trend_min": 0.0,
+   "remaining_sched_min": 55.0,
+   "stops_between": 7.0,
+   "hour_sin": -0.872496007072797,
+   "hour_cos": -0.4886212414969553
+  },
+  "expected_change": [
+   -6.28413,
+   -1.26259,
+   6.82983
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "DGHDA",
+   "to_station": "DBATE",
+   "route": "Drogheda > Grand Canal Dock",
+   "service_type": "P",
+   "weekday": "0"
+  },
+  "numeric": {
+   "current_delay_min": 1.0,
+   "delay_trend_min": 0.0,
+   "remaining_sched_min": 34.0,
+   "stops_between": 5.0,
+   "hour_sin": -0.9659258262890683,
+   "hour_cos": -0.25881904510252063
+  },
+  "expected_change": [
+   -2.52045,
+   -1.20792,
+   1.11088
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "SKILL",
+   "to_station": "KILNY",
+   "route": "Bray > Malahide",
+   "service_type": "E",
+   "weekday": "2"
+  },
+  "numeric": {
+   "current_delay_min": 0.4,
+   "delay_trend_min": -0.09999999999999998,
+   "remaining_sched_min": 2.5,
+   "stops_between": 0.0,
+   "hour_sin": 0.9951847266721969,
+   "hour_cos": 0.09801714032956055
+  },
+  "expected_change": [
+   -1.0753,
+   -0.76323,
+   -0.45064
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "DLKEY",
+   "to_station": "SEAPT",
+   "route": "Bray > Howth",
+   "service_type": "E",
+   "weekday": "5"
+  },
+  "numeric": {
+   "current_delay_min": 1.7,
+   "delay_trend_min": 0.30000000000000004,
+   "remaining_sched_min": 11.5,
+   "stops_between": 4.0,
+   "hour_sin": 0.6771970881832687,
+   "hour_cos": -0.7358016742003936
+  },
+  "expected_change": [
+   -0.67422,
+   0.00472,
+   0.84548
+  ]
+ },
+ {
+  "categorical": {
+   "from_station": "MONVN",
+   "to_station": "SALNS",
+   "route": "Portlaoise > Dublin Heuston",
+   "service_type": "P",
+   "weekday": "4"
+  },
+  "numeric": {
+   "current_delay_min": 2.5,
+   "delay_trend_min": 0.5,
+   "remaining_sched_min": 22.5,
+   "stops_between": 2.0,
+   "hour_sin": -0.7416832415566893,
+   "hour_cos": 0.6707503031635257
+  },
+  "expected_change": [
+   -2.62786,
+   -1.47389,
+   0.87001
+  ]
+ }
+]
