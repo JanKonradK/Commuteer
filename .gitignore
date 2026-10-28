@@ -4,7 +4,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-data/
+/data/
 dist/
 infra/terraform/.terraform/
 infra/terraform/*.tfstate*
