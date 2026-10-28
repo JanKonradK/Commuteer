@@ -77,10 +77,12 @@ Full breakdown: [`reports/delay_model_results.md`](reports/delay_model_results.m
 
 ## 3. Android app
 
-Pick your commute (for example Athlone → Dublin Heuston) to see:
-- the next trains, with live delays;
-- a predicted arrival time and 80% range at your stop;
-- the chance of arriving within 5 minutes of the timetable.
+Pick your commute (for example Athlone → Dublin Heuston). Each train shows **departure → predicted arrival**, with timetable times struck through when they've changed, and a bar that draws the arrival window:
+
+- **band:** where the train is 80% likely to arrive;
+- **dot:** the best guess;
+- **white tick:** the timetable;
+- **colour:** green = very likely within 5 min of the timetable, amber = uncertain, red = probably late.
 
 - **No server:** the app calls Irish Rail directly through Android's native networking (Capacitor HTTP).
 - **On-device model:** the trained PyTorch network is exported to JSON (450 KB) and its forward pass is reimplemented in TypeScript. A test checks it reproduces PyTorch's outputs on 25 held-out cases.

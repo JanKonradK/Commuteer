@@ -3,7 +3,7 @@ import modelJson from "./model/delay-model.json";
 import { type DeparturesResult, loadDepartures } from "./lib/departures";
 import { api, type Station } from "./lib/irishRail";
 import { DelayModel, type ModelJson } from "./lib/model";
-import { clock, ON_TIME_LIMIT_MIN, type Prediction } from "./lib/predict";
+import { clock, type Prediction } from "./lib/predict";
 import { load, save } from "./lib/storage";
 
 const REFRESH_MS = 60_000;
@@ -18,48 +18,59 @@ interface Commute {
   to: string;
 }
 
-function minutes(delay: number): string {
-  const r = Math.round(delay);
-  if (r === 0) return "on time";
-  return r > 0 ? `${r} min late` : `${-r} min early`;
-}
-
 /** Timetable departure plus the board's lateness. (The board's own "expected
  * departure" field is sometimes inconsistent, e.g. earlier than the timetable.) */
-function departure(p: Prediction): string {
+function departureS(p: Prediction): number {
   const [h, m] = p.train.schDepart.split(":").map(Number);
-  return clock((h * 60 + m + Math.max(0, p.train.lateMin)) * 60);
+  return (h * 60 + m + Math.max(0, p.train.lateMin)) * 60;
+}
+
+function tone(p: Prediction): "good" | "ok" | "bad" {
+  return p.chanceOnTime >= 0.8 ? "good" : p.chanceOnTime >= 0.5 ? "ok" : "bad";
+}
+
+/** The likely arrival window drawn against the timetable (the white tick). */
+function ArrivalWindow({ p }: { p: Prediction }) {
+  const [lo, mid, hi] = p.arrivalDelay;
+  const min = Math.min(lo, 0) - 2;
+  const max = Math.max(hi, 0) + 2;
+  const x = (d: number) => `${((d - min) / (max - min)) * 100}%`;
+  const at = (d: number) => clock(p.scheduledArrivalS + d * 60);
+  return (
+    <div
+      className="window"
+      role="img"
+      aria-label={`Likely arrival ${at(lo)} to ${at(hi)}; timetable ${clock(p.scheduledArrivalS)}`}
+    >
+      <div className="band" style={{ left: x(lo), width: `calc(${x(hi)} - ${x(lo)})` }} />
+      <div className="tick" style={{ left: x(0) }} />
+      <div className="dot" style={{ left: x(mid) }} />
+    </div>
+  );
 }
 
 function TrainCard({ p }: { p: Prediction }) {
   const [lo, mid, hi] = p.arrivalDelay;
   const at = (d: number) => clock(p.scheduledArrivalS + d * 60);
-  const chance = Math.round(p.chanceOnTime * 20) * 5; // nearest 5%
-  const tone = chance >= 80 ? "good" : chance >= 50 ? "ok" : "bad";
+  const late = p.train.lateMin > 0;
+  const arrivalShift = Math.round(mid) !== 0;
   return (
-    <li className="card">
-      <div className="row">
-        <span className="time">{departure(p)}</span>
-        <span className="dest">to {p.train.destination}</span>
-        <span className="code">{p.train.code}</span>
+    <li className={`card ${tone(p)}`} aria-label={`Train ${p.train.code}`}>
+      <div className="times">
+        <div>
+          <span className="big">{clock(departureS(p))}</span>
+          {late && <s>{p.train.schDepart}</s>}
+        </div>
+        <span className="arrow">→</span>
+        <div className="arr">
+          <span className="big">{at(mid)}</span>
+          {arrivalShift && <s>{clock(p.scheduledArrivalS)}</s>}
+          <span className="span">
+            {at(lo)}–{at(hi)}
+          </span>
+        </div>
       </div>
-      <div className="muted">
-        {p.train.lateMin > 0 ? `${p.train.lateMin} min late` : "On time"} · due in {p.train.dueInMin} min
-        {p.train.lateMin > 0 && ` (timetable ${p.train.schDepart})`}
-      </div>
-      <div className="arrival">
-        Arrives {p.toName} <strong>{at(mid)}</strong>
-        <span className="muted"> (timetable {clock(p.scheduledArrivalS)})</span>
-      </div>
-      <div className="range">
-        80% likely between {at(lo)} and {at(hi)}
-        <span className={`pill ${tone}`}>
-          {chance}% within {ON_TIME_LIMIT_MIN} min of timetable
-        </span>
-      </div>
-      <div className="muted small">
-        Delay last measured at {p.observedAt}: {minutes(p.currentDelayMin)}
-      </div>
+      <ArrivalWindow p={p} />
     </li>
   );
 }
@@ -116,25 +127,35 @@ export default function App() {
   }, [commute, refresh]);
 
   const picker = (key: keyof Commute, label: string) => (
-    <label>
-      {label}
-      <select value={commute[key]} onChange={(e) => setCommute({ ...commute, [key]: e.target.value })}>
-        {stationOptions.map((s) => (
-          <option key={s.code} value={s.code}>
-            {s.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <select
+      aria-label={label}
+      value={commute[key]}
+      onChange={(e) => setCommute({ ...commute, [key]: e.target.value })}
+    >
+      {stationOptions.map((s) => (
+        <option key={s.code} value={s.code}>
+          {s.name}
+        </option>
+      ))}
+    </select>
   );
-  const stale = result && Date.now() - result.fetchedAt > 3 * REFRESH_MS;
+  const stale = !!result && (!!error || Date.now() - result.fetchedAt > 3 * REFRESH_MS);
+  const updated = result
+    ? new Date(result.fetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "";
 
   return (
     <main>
       <header>
         <h1>Commuteer</h1>
-        <button className="refresh" onClick={() => void refresh()} disabled={loading}>
-          {loading ? "Updating…" : "Refresh"}
+        {result && <span className={`status ${stale ? "stale" : ""}`}>{updated}</span>}
+        <button
+          className={`refresh ${loading ? "spin" : ""}`}
+          aria-label="Refresh"
+          onClick={() => void refresh()}
+          disabled={loading}
+        >
+          ↻
         </button>
       </header>
 
@@ -145,40 +166,24 @@ export default function App() {
           aria-label="Swap stations"
           onClick={() => setCommute({ from: commute.to, to: commute.from })}
         >
-          ⇅
+          ⇄
         </button>
         {picker("to", "To")}
       </section>
 
-      {error && (
-        <p className="banner">
-          {error}. {result ? "Showing the last trains loaded." : "Check your connection and try again."}
-        </p>
-      )}
-      {commute.from === commute.to && <p className="banner">Pick two different stations.</p>}
+      {error && !result && <p className="notice">⚠ {error}</p>}
+      {commute.from === commute.to && <p className="notice">⇄</p>}
 
-      {result && (
-        <>
-          <p className={`muted small ${stale ? "stale" : ""}`}>
-            Updated {new Date(result.fetchedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            {stale && " · may be out of date"}
-          </p>
-          {result.predictions.length === 0 ? (
-            <p className="empty">No direct trains in the next 90 minutes.</p>
-          ) : (
-            <ul>
-              {result.predictions.map((p) => (
-                <TrainCard key={`${p.train.code}-${p.train.trainDate}`} p={p} />
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-
-      <footer className="muted small">
-        Live data: Irish Rail. Arrival ranges come from a model trained on 8 weeks of real journeys and
-        run on this phone.
-      </footer>
+      {result &&
+        (result.predictions.length === 0 ? (
+          <p className="notice">No direct trains · 90 min</p>
+        ) : (
+          <ul>
+            {result.predictions.map((p) => (
+              <TrainCard key={`${p.train.code}-${p.train.trainDate}`} p={p} />
+            ))}
+          </ul>
+        ))}
     </main>
   );
 }
