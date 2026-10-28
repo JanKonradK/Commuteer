@@ -95,7 +95,17 @@ Pick your commute (for example Athlone → Dublin Heuston). Each train shows **d
 - **Live bus delays.** A Lambda function URL (`bus_live`) returns delays for the trips a phone asks about. It reads the snapshot the collector already saved, so phones never see the Transport for Ireland key and TFI gets no extra traffic. It decodes the GTFS-Realtime protobuf with a small standard-library decoder, which is tested against Google's official bindings on 3,565 real trips. Responses take about 160 ms.
 - **🚐 Your own timetables.** Paste times as plain text (`07:45 Inny Kayak Club`, with `*` for drop-off only); they're stored on the phone. Private timetables, like an employer's staff shuttle, go in `app/src/local/*.shuttles.json`. That folder is git-ignored and built into your own APK only.
 - **⭐ Commutes.** Two legs with a walk between them (e.g. bus 466 Athlone → Ballymahon, walk, shuttle → work). Each option shows **Leave / Arrive** with a countdown, plain-language chips ("2 min to spare", "On time", "Timetable only"), and a step-by-step timeline: time, place, and what you do next. The next trip opens by default; later ones expand on tap. Live bus delays feed the connection. When several first legs reach the same second leg, only the latest is shown (least waiting), and shuttle runs end at shift changes. ⇄ reverses it for the trip home.
-- **Not modelled yet:** bus delays come from TFI's live estimate. A bus delay model like the train one needs a few weeks of the collector's bus history first.
+- **Bus delay model (in progress).** See below.
+
+## 4. Bus delay model
+
+TFI's live bus estimates are decent near the start of a route but drift further out, and on some routes (e.g. 466) a plain timetable beats them. A bus model needs **actual** times, which no feed publishes, so Commuteer reconstructs them:
+
+- **Actual stop times from GPS** (`commuteer.buses.history`). Every Bus Éireann vehicle reports its position each minute. For each trip, each stop is projected onto the path between consecutive GPS fixes, in route order, and the passage time is interpolated at the closest approach. Stops the bus never came within 300 m of stay unknown. One morning (85 minutes) gave **59,656 actual stop times across 2,797 trips**. The vehicle decoder is tested against Google's bindings, and stop matching on synthetic and out-and-back routes.
+- **Scoring TFI** (1.57 M live predictions, same morning). Average error is 1.4 min ten minutes ahead, rising to 4.1 min 40–90 minutes ahead, which is barely better than the timetable (4.1). On route 466 the timetable (1.57 min) beat TFI (2.10).
+- **Model.** The train model's classes (PyTorch quantile network, gradient boosting, conformal calibration, MLflow), now configurable by feature set, predict the **correction to TFI's estimate**. Inputs: TFI's estimate, the GPS-measured delay and its trend, timetabled minutes to the stop, time since the last stop, stops ahead, time of day, weekday, route and stop. A test guards against a leak caught during development: "minutes until arrival" uses the actual arrival, so only the *timetabled* minutes are allowed as an input.
+- **First result (one morning, split by trip, so optimistic):** TFI 2.46 min average error → gradient boosting **1.87 min (−24%)**, PyTorch network 2.16 min, with ranges calibrated to ~80% coverage and narrower than TFI's (5.3 vs 7.1 min). On route 466 alone the sample is too small to call: timetable 2.47, gradient boosting 2.55, TFI 2.90. Full table: [`reports/bus_model_results.md`](reports/bus_model_results.md).
+- **What's next.** A nightly Lambda (`bus_history`, 04:00) adds each day's actual stop times and scored predictions to S3 (`silver/`). After about a week, the split switches to *by date* (train on the past, test on the newest days). The model goes into the app only if it still beats TFI there.
 
 ## Development
 
@@ -104,13 +114,15 @@ Requires [uv](https://docs.astral.sh/uv/) and Node.js.
 ```sh
 # Collector + models (Python)
 uv sync --extra ml
-uv run pytest                                    # 29 tests (AWS mocked with moto)
+uv run pytest                                    # 44 tests (AWS mocked with moto)
 uv run ruff check . && uv run mypy src tests     # lint + strict types
 
 uv run commuteer-collect poll --loop             # collect live feeds into ./data
 uv run commuteer-collect backfill --days 56 --gtfs data/gtfs/GTFS_All.zip
 uv run commuteer-train                           # train, compare, log to MLflow, export app model
 uv run commuteer-buses pack --gtfs data/gtfs/GTFS_All.zip   # Midlands bus timetable for the app
+uv run commuteer-buses history --date 2026-10-28 --gtfs data/gtfs/GTFS_All.zip   # actual bus times
+uv run commuteer-buses train                     # bus models vs TFI's live estimate
 uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
 
 # Android app

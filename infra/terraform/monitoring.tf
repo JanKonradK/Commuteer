@@ -77,7 +77,7 @@ resource "aws_cloudwatch_metric_alarm" "feed_failing" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "nightly_job_failed" {
-  for_each = toset(["rail_movements", "gtfs_snapshot"])
+  for_each = toset(["rail_movements", "gtfs_snapshot", "bus_history"])
 
   alarm_name          = "${var.project}-${each.key}-failed"
   alarm_description   = "The ${each.key} job failed (after retries)."

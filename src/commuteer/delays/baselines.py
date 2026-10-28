@@ -83,19 +83,34 @@ class GradientBoosting:
 
     name = "gradient_boosting"
 
-    def __init__(self, max_iter: int = 300, learning_rate: float = 0.1, seed: int = 0) -> None:
+    def __init__(
+        self,
+        max_iter: int = 300,
+        learning_rate: float = 0.1,
+        seed: int = 0,
+        numeric: list[str] = FEATURES_NUMERIC,
+        categorical: list[str] = FEATURES_CATEGORICAL,
+        target: str = "delay_change_min",
+    ) -> None:
         self.params = {"max_iter": max_iter, "learning_rate": learning_rate, "random_state": seed}
+        self.numeric, self.categorical, self.target = numeric, categorical, target
 
     def _matrix(self, df: pd.DataFrame) -> pd.DataFrame:
-        x = df[FEATURES_NUMERIC + FEATURES_CATEGORICAL].copy()
-        for col in FEATURES_CATEGORICAL:
+        x = df[self.numeric + self.categorical].copy()
+        for col in self.categorical:
             x[col] = pd.Categorical(x[col], categories=self.categories[col])
         return x
 
+    MAX_CATEGORIES = 254  # scikit-learn's limit is 255 including "missing"
+
     def fit(self, train: pd.DataFrame) -> GradientBoosting:
-        self.categories = {c: sorted(train[c].unique()) for c in FEATURES_CATEGORICAL}
+        # Keep the most frequent values; rarer ones (e.g. quiet bus stops) count as missing.
+        self.categories = {
+            c: sorted(train[c].value_counts().index[: self.MAX_CATEGORIES])
+            for c in self.categorical
+        }
         x = self._matrix(train)
-        y = train["delay_change_min"].to_numpy()
+        y = train[self.target].to_numpy()
         self.models = [
             HistGradientBoostingRegressor(
                 loss="quantile", quantile=q, categorical_features="from_dtype", **self.params

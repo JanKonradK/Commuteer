@@ -17,6 +17,14 @@ locals {
       ephemeral   = 512
       description = "Nightly: stop-by-stop actual times for every train that ran yesterday"
     }
+    bus_history = {
+      handler     = "commuteer.collector.handlers.bus_history"
+      schedule    = "cron(0 4 * * ? *)"
+      timeout     = 900
+      memory      = 3008 # a day of GPS fixes for every bus in Ireland fits comfortably
+      ephemeral   = 2048 # national timetable zip (~200 MB) is unpacked here
+      description = "Nightly: actual bus stop times from GPS + scored live predictions"
+    }
     gtfs_snapshot = {
       handler     = "commuteer.collector.handlers.gtfs_snapshot"
       schedule    = "cron(0 5 * * ? *)"
@@ -59,6 +67,7 @@ data "aws_iam_policy_document" "collector" {
     resources = [
       "${aws_s3_bucket.data.arn}/bronze/*",
       "${aws_s3_bucket.data.arn}/latest/*", # newest snapshot of each feed, read by bus_live
+      "${aws_s3_bucket.data.arn}/silver/*", # derived tables (bus history)
     ]
   }
   statement {

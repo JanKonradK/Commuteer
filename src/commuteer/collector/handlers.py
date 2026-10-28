@@ -160,3 +160,25 @@ def bus_live(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if t in trips
     }
     return _response(200, {"feed_timestamp": timestamp, "trips": found}, max_age=15)
+
+
+# --- Nightly bus history (actual stop times from GPS + scored live predictions) -----------
+
+
+def bus_history(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    from commuteer.buses.history import build_day
+
+    day = (
+        date.fromisoformat(event["date"])
+        if "date" in event
+        else datetime.now(UTC).date() - timedelta(days=1)
+    )
+    sink = _sink()
+    zips = [k for k in sink.list_keys("bronze/gtfs_static/") if k.endswith(".zip")]
+    if not zips:
+        raise RuntimeError("no timetable snapshot in S3 yet")
+    gtfs = Path("/tmp/gtfs.zip")
+    gtfs.write_bytes(sink.get(sorted(zips)[-1]))  # keys sort by date: newest last
+    stats = build_day(sink, day, gtfs)
+    _emit("bus_history_done", date=day.isoformat(), **stats)
+    return {"date": day.isoformat(), **stats}

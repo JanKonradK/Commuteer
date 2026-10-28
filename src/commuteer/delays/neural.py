@@ -66,33 +66,39 @@ def pinball(pred: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 class NeuralQuantile:
     name = "pytorch_quantile_net"
 
-    def __init__(self, cfg: NeuralConfig | None = None) -> None:
+    def __init__(
+        self,
+        cfg: NeuralConfig | None = None,
+        numeric: list[str] = FEATURES_NUMERIC,
+        categorical: list[str] = FEATURES_CATEGORICAL,
+        target: str = "delay_change_min",
+    ) -> None:
         self.cfg = cfg or NeuralConfig()
+        self.numeric, self.categorical, self.target = numeric, categorical, target
         self.history: list[float] = []
 
     def _encode(self, df: pd.DataFrame) -> tuple[torch.Tensor, torch.Tensor]:
         cats = np.column_stack(
             [
                 df[c].map(self.vocab[c]).fillna(UNKNOWN).to_numpy(dtype=np.int64)
-                for c in FEATURES_CATEGORICAL
+                for c in self.categorical
             ]
         )
-        nums = (df[FEATURES_NUMERIC].to_numpy(dtype=np.float32) - self.mean) / self.std
+        nums = (df[self.numeric].to_numpy(dtype=np.float32) - self.mean) / self.std
         return torch.from_numpy(cats), torch.from_numpy(nums.astype(np.float32))
 
     def fit(self, train: pd.DataFrame) -> NeuralQuantile:
         torch.manual_seed(self.cfg.seed)
         self.vocab = {
-            c: {v: i + 1 for i, v in enumerate(sorted(train[c].unique()))}
-            for c in FEATURES_CATEGORICAL
+            c: {v: i + 1 for i, v in enumerate(sorted(train[c].unique()))} for c in self.categorical
         }
-        x_num = train[FEATURES_NUMERIC].to_numpy(dtype=np.float32)
+        x_num = train[self.numeric].to_numpy(dtype=np.float32)
         self.mean, self.std = x_num.mean(axis=0), x_num.std(axis=0) + 1e-6
         cats, nums = self._encode(train)
-        y = torch.from_numpy(train["delay_change_min"].to_numpy(dtype=np.float32))
+        y = torch.from_numpy(train[self.target].to_numpy(dtype=np.float32))
 
         self.model = QuantileNet(
-            [len(self.vocab[c]) for c in FEATURES_CATEGORICAL], len(FEATURES_NUMERIC), self.cfg
+            [len(self.vocab[c]) for c in self.categorical], len(self.numeric), self.cfg
         )
         opt = torch.optim.AdamW(
             self.model.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay
@@ -130,8 +136,8 @@ class NeuralQuantile:
             "format": "commuteer-quantile-net/1",
             "quantiles": list(QUANTILES),
             "conformal_margin_min": round(conformal_margin_min, 4),
-            "categorical": FEATURES_CATEGORICAL,
-            "numeric": FEATURES_NUMERIC,
+            "categorical": self.categorical,
+            "numeric": self.numeric,
             "vocab": self.vocab,
             "numeric_mean": np.round(self.mean.astype(np.float64), 6).tolist(),
             "numeric_std": np.round(self.std.astype(np.float64), 6).tolist(),

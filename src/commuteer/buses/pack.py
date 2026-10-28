@@ -163,7 +163,32 @@ def main(argv: list[str] | None = None) -> None:
     pk.add_argument("--lon", type=float, default=ATHLONE[1])
     pk.add_argument("--radius-km", type=float, default=40)
     pk.add_argument("--days", type=int, default=120)
+
+    hist = sub.add_parser(
+        "history", help="actual bus stop times + scored live predictions for a day"
+    )
+    hist.add_argument("--date", type=date.fromisoformat, required=True)
+    hist.add_argument("--gtfs", type=Path, required=True)
+    hist.add_argument("--data", type=Path, default=Path("data"))
+
+    tr = sub.add_parser("train", help="train and compare bus delay models")
+    tr.add_argument("--data", type=Path, default=Path("data"))
+    tr.add_argument("--tracking-uri", default="sqlite:///mlflow.db")
+    tr.add_argument("--report", type=Path, default=Path("reports/bus_model_results.md"))
+    tr.add_argument("--epochs", type=int, default=8)
     args = parser.parse_args(argv)
+
+    if args.command == "history":
+        from commuteer.buses.history import build_day
+        from commuteer.collector.storage import LocalSink
+
+        print(build_day(LocalSink(args.data), args.date, args.gtfs))
+        return
+    if args.command == "train":
+        from commuteer.buses.train import train_buses
+
+        train_buses(args.data, args.tracking_uri, args.report, args.epochs)
+        return
 
     pack = build_pack(args.gtfs, (args.lat, args.lon), args.radius_km, days=args.days)
     args.out.parent.mkdir(parents=True, exist_ok=True)

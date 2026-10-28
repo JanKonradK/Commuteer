@@ -29,6 +29,7 @@ commuteer-buses = "commuteer.buses.pack:main"
 [dependency-groups]
 dev = [
     "boto3>=1.35",
+    "botocore[crt]>=1.35",  # needed to use `aws login` credentials locally
     "moto[s3,ssm]>=5.0",
     "mypy>=1.13",
     "pytest>=8.3",
