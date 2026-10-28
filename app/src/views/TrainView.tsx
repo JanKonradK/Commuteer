@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { loadDepartures } from "../lib/departures";
-import { api, type Station } from "../lib/irishRail";
+import { type DeparturesResult, loadDepartures } from "../lib/departures";
+import { api, hasLiveInfo, type Station } from "../lib/irishRail";
 import { DelayModel, type ModelJson } from "../lib/model";
-import { clock, type Prediction } from "../lib/predict";
+import { clock, expectedTimeS, type Prediction } from "../lib/predict";
 import { load, save } from "../lib/storage";
 import modelJson from "../model/delay-model.json";
 import { Chip, delayText, delayTone, REFRESH_MS, StatusRow, Times, useAutoRefresh, secondsSinceMidnight } from "../ui";
@@ -13,11 +13,11 @@ const FALLBACK_STATIONS: Station[] = [
 ];
 const STATIONS_MAX_AGE_MS = 7 * 24 * 3600 * 1000;
 
-/** Timetable departure plus the board's lateness. (The board's own "expected
- * departure" field is sometimes inconsistent, e.g. earlier than the timetable.) */
+/** Use the operator's expected departure; fall back to the board delay. */
 function departureS(p: Prediction): number {
   const [h, m] = p.train.schDepart.split(":").map(Number);
-  return (h * 60 + m + Math.max(0, p.train.lateMin)) * 60;
+  const scheduled = (h * 60 + m) * 60;
+  return expectedTimeS(p.train.expDepart, scheduled) ?? scheduled + Math.max(0, p.train.lateMin) * 60;
 }
 
 function tone(p: Prediction): "good" | "ok" | "bad" {
@@ -44,7 +44,7 @@ function ArrivalWindow({ p }: { p: Prediction }) {
   );
 }
 
-function TrainCard({ p, legend }: { p: Prediction; legend: boolean }) {
+function TrainCard({ p, legend, stale }: { p: Prediction; legend: boolean; stale: boolean }) {
   const [lo, mid, hi] = p.arrivalDelay;
   const [h, m] = p.train.schDepart.split(":").map(Number);
   const chance = Math.round(p.chanceOnTime * 10) * 10; // nearest 10%
@@ -53,18 +53,22 @@ function TrainCard({ p, legend }: { p: Prediction; legend: boolean }) {
       <Times
         departS={departureS(p)}
         scheduledDepartS={(h * 60 + m) * 60}
-        arriveS={p.scheduledArrivalS + mid * 60}
+        arriveS={p.liveArrivalS ?? p.scheduledArrivalS + mid * 60}
         scheduledArriveS={p.scheduledArrivalS}
-        nowS={secondsSinceMidnight()}
+        nowS={stale ? undefined : secondsSinceMidnight()}
+        departLabel={stale ? "Leave · last update" : hasLiveInfo(p.train) ? "Leave · live" : "Leave · timetable"}
+        arriveLabel={stale ? "Arrive · last update" : p.liveArrivalS != null ? "Arrive · live" : "Arrive · model estimate"}
       />
       <div className="chips">
-        <Chip tone={delayTone(p.train.lateMin)}>{delayText(p.train.lateMin)}</Chip>
+        <Chip tone={stale || !hasLiveInfo(p.train) ? "none" : "good"}>{stale ? "Last known times" : hasLiveInfo(p.train) ? "Live · Irish Rail" : "Timetable only"}</Chip>
+        {hasLiveInfo(p.train) && <Chip tone={stale ? "none" : delayTone(p.train.lateMin)}>{delayText(p.train.lateMin)}</Chip>}
         <Chip tone={tone(p)}>{chance}% chance on time</Chip>
       </div>
+      {p.train.lastLocation && <div className="muted small">{p.train.lastLocation}</div>}
       <ArrivalWindow p={p} />
       <div className="window-labels">
         <span>
-          Likely arrival {clock(p.scheduledArrivalS + lo * 60)}–{clock(p.scheduledArrivalS + hi * 60)}
+          Model estimate {clock(p.scheduledArrivalS + lo * 60)}–{clock(p.scheduledArrivalS + hi * 60)}
         </span>
         {legend && (
           <span className="legend">
@@ -106,8 +110,9 @@ export function TrainView() {
     save("lastResult", r);
     return r;
   }, [route, stations]);
-  const result = data ?? load("lastResult", null);
-  const stale = !!error || (!!at && Date.now() - at > 3 * REFRESH_MS);
+  const cached = load<DeparturesResult | null>("lastResult", null);
+  const result = data ?? (cached?.fromCode === route.from && cached.toCode === route.to ? cached : null);
+  const stale = !!error || !!(result && Date.now() - result.fetchedAt > 3 * REFRESH_MS);
 
   const picker = (key: "from" | "to") => (
     <select aria-label={key} value={route[key]} onChange={(e) => setRoute({ ...route, [key]: e.target.value })}>
@@ -130,13 +135,14 @@ export function TrainView() {
       </div>
       <StatusRow at={at ?? result?.fetchedAt ?? null} loading={loading} stale={stale} onRefresh={refresh} />
       {error && !result && <p className="notice">⚠ {error}</p>}
+      {result?.arrivalBoardUnavailable && <p className="muted small">Live arrivals unavailable · showing model estimates where needed</p>}
       {result &&
         (result.predictions.length === 0 ? (
           <p className="notice">No direct trains · 90 min</p>
         ) : (
           <ul>
             {result.predictions.map((p, i) => (
-              <TrainCard key={`${p.train.code}-${p.train.trainDate}`} p={p} legend={i === 0} />
+              <TrainCard key={`${p.train.code}-${p.train.trainDate}`} p={p} legend={i === 0} stale={stale} />
             ))}
           </ul>
         ))}

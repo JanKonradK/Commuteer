@@ -1,9 +1,19 @@
 // Shared UI pieces: auto-refresh, the status/refresh row, and a two-time trip line.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { clock } from "./lib/predict";
 
 export const REFRESH_MS = 60_000;
+
+/** Keep feed ages and countdowns moving between network refreshes. */
+export function useNow(): number {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
 
 /** Runs `load` now, every minute while the app is visible, and on demand. */
 export function useAutoRefresh<T>(load: () => Promise<T>, deps: unknown[]) {
@@ -11,27 +21,43 @@ export function useAutoRefresh<T>(load: () => Promise<T>, deps: unknown[]) {
   const [at, setAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const request = useRef(0);
 
   // `deps` comes from the caller: whatever the load function reads (e.g. chosen stops).
   const run = useCallback(async () => {
+    const id = ++request.current;
     setLoading(true);
     try {
-      setData(await load());
+      const result = await load();
+      if (id !== request.current) return;
+      setData(result);
       setAt(Date.now());
       setError(null);
     } catch (e) {
+      if (id !== request.current) return;
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
-      setLoading(false);
+      if (id === request.current) setLoading(false);
     }
   }, deps);
 
   useEffect(() => {
+    setData(null);
+    setAt(null);
+    setError(null);
     void run();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void run();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     const timer = setInterval(() => {
       if (document.visibilityState === "visible") void run();
     }, REFRESH_MS);
-    return () => clearInterval(timer);
+    return () => {
+      ++request.current;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [run]);
 
   return { data, at, loading, error, refresh: run, setData };
@@ -87,18 +113,20 @@ export function Times(props: {
   scheduledDepartS: number;
   scheduledArriveS: number;
   nowS?: number; // seconds since midnight; shows "in 12 min" next to Leave
+  departLabel?: string;
+  arriveLabel?: string;
 }) {
   return (
     <div className="times">
       <div>
         <small>
-          Leave{props.nowS !== undefined && <span className="countdown"> · {countdown(props.departS - props.nowS)}</span>}
+          {props.departLabel ?? "Leave"}{props.nowS !== undefined && <span className="countdown"> · {countdown(props.departS - props.nowS)}</span>}
         </small>
         <Time s={props.departS} scheduledS={props.scheduledDepartS} className="big" />
       </div>
       <span className="arrow">→</span>
       <div className="arr">
-        <small>Arrive</small>
+        <small>{props.arriveLabel ?? "Arrive"}</small>
         <Time s={props.arriveS} scheduledS={props.scheduledArriveS} className="big" />
       </div>
     </div>

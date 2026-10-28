@@ -24,6 +24,7 @@ export interface LegTrip {
   scheduledArriveS: number;
   live: boolean;
   canceled: boolean;
+  busInfo?: BusDeparture;
 }
 
 export interface Connection {
@@ -43,6 +44,7 @@ function fromBus(d: BusDeparture): LegTrip {
     scheduledArriveS: d.arriveS,
     live,
     canceled: d.canceled,
+    busInfo: d,
   };
 }
 
@@ -72,13 +74,15 @@ async function legTrips(
   const from = groups.find((g) => g.key === leg.from);
   const to = groups.find((g) => g.key === leg.to);
   if (!from || !to) return [];
-  let deps = busDepartures(pack, from, to, now, horizonMin).filter((d) => d.departS >= afterS - 120);
+  let deps = busDepartures(pack, from, to, now, horizonMin, 120);
   try {
     deps = await withLiveDelays(deps);
   } catch {
     // Offline or API down: fall back to the timetable (cards show "no live data").
   }
-  return deps.map(fromBus).filter((t) => !t.canceled);
+  return deps.filter((d) => !d.skipped).map(fromBus)
+    .filter((t) => !t.canceled && t.departS >= afterS - 120)
+    .sort((a, b) => a.departS - b.departS);
 }
 
 export async function connections(

@@ -4,6 +4,7 @@
 import { load, save } from "./storage";
 
 export const BUS_LIVE_URL = "https://vr7lgty7tcare3y6qvjqhx22di0rcdyj.lambda-url.eu-north-1.on.aws/";
+const MAX_FEED_AGE_S = 5 * 60;
 
 export interface BusPack {
   format: string;
@@ -34,6 +35,21 @@ export interface BusDeparture {
   departDelayS: number | null; // live, null if unknown
   arriveDelayS: number | null;
   canceled: boolean;
+  skipped?: boolean; // boarding or destination stop is not served
+  feedAt?: number; // feed timestamp, milliseconds since the epoch
+  departureUpdate?: BusTimeUpdate | null;
+  arrivalUpdate?: BusTimeUpdate | null;
+}
+
+export interface BusTimeUpdate {
+  delayS: number;
+  source: "stop" | "carried";
+  stopId: string;
+  sequence: number;
+}
+
+export function busTimeSource(update: BusTimeUpdate | null | undefined): string {
+  return update ? update.source === "stop" ? "Stop update" : "Estimated" : "Timetable";
 }
 
 const KM_PER_DEG = 111.2;
@@ -83,6 +99,7 @@ export function busDepartures(
   to: StopGroup,
   now: Date,
   horizonMin = 180,
+  lookbackMin = 2,
 ): BusDeparture[] {
   const fromSet = new Set(from.stops);
   const toSet = new Set(to.stops);
@@ -102,7 +119,7 @@ export function busDepartures(
       const j = calls.findIndex((c, k) => k > i && toSet.has(c[0]));
       if (j < 0) continue;
       const departS = (calls[i][3] + offset * 1440) * 60;
-      if (departS < nowS - 120 || departS > nowS + horizonMin * 60) continue;
+      if (departS < nowS - lookbackMin * 60 || departS > nowS + horizonMin * 60) continue;
       out.push({
         tripId,
         route: pack.routes[route][1],
@@ -129,39 +146,69 @@ interface LiveTrip {
 
 /** GTFS-Realtime rule: a stop's delay is the latest update at or before it in the trip. */
 export function delayAt(live: LiveTrip, seq: number, kind: "arrival" | "departure"): number | null {
-  let delay: number | null = null;
-  for (const [s, , arr, dep] of live.stops) {
-    if (s === null || s > seq) break;
-    const value = kind === "arrival" ? (arr ?? dep) : (dep ?? arr);
-    if (value !== null) delay = value;
+  return updateAt(live, seq, kind)?.delayS ?? null;
+}
+
+/** Earlier calls propagate their departure delay, including any time recovered at a stop. */
+export function updateAt(live: LiveTrip, seq: number, kind: "arrival" | "departure"): BusTimeUpdate | null {
+  let update: BusTimeUpdate | null = null;
+  for (const [s, stopId, arr, dep, skipped] of live.stops) {
+    if (s === null || s > seq || skipped) continue;
+    const value = s === seq && kind === "arrival" ? (arr ?? dep) : (dep ?? arr);
+    if (value !== null && Number.isFinite(value) && (!update || s >= update.sequence)) {
+      update = { delayS: value, source: s === seq ? "stop" : "carried", stopId, sequence: s };
+    }
   }
-  return delay;
+  return update;
 }
 
 export async function withLiveDelays(deps: BusDeparture[], timeoutMs = 8000): Promise<BusDeparture[]> {
   if (deps.length === 0) return deps;
-  const ids = [...new Set(deps.map((d) => d.tripId))].slice(0, 50);
+  const ids = [...new Set(deps.map((d) => d.tripId))];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${BUS_LIVE_URL}?trips=${ids.map(encodeURIComponent).join(",")}`, {
-      signal: controller.signal,
-    });
-    if (!res.ok) throw new Error(`live buses: HTTP ${res.status}`);
-    const body = (await res.json()) as { trips: Record<string, LiveTrip> };
+    const trips: Record<string, LiveTrip> = {};
+    const timestamps: Record<string, number> = {};
+    for (let i = 0; i < ids.length; i += 50) {
+      const res = await fetch(`${BUS_LIVE_URL}?trips=${ids.slice(i, i + 50).map(encodeURIComponent).join(",")}`, {
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`live buses: HTTP ${res.status}`);
+      const body = (await res.json()) as { feed_timestamp: number; trips: Record<string, LiveTrip> };
+      const age = Date.now() / 1000 - body.feed_timestamp;
+      if (!Number.isFinite(age) || age > MAX_FEED_AGE_S || age < -60) {
+        throw new Error("Live bus times are out of date");
+      }
+      Object.assign(trips, body.trips);
+      for (const id of ids.slice(i, i + 50)) timestamps[id] = body.feed_timestamp * 1000;
+    }
     return deps.map((d) => {
-      const live = body.trips[d.tripId];
+      const live = trips[d.tripId];
       if (!live || live.date !== d.serviceDate) return d;
+      const departureUpdate = updateAt(live, d.fromSeq, "departure");
+      const arrivalUpdate = updateAt(live, d.toSeq, "arrival");
       return {
         ...d,
         canceled: live.canceled,
-        departDelayS: delayAt(live, d.fromSeq, "departure"),
-        arriveDelayS: delayAt(live, d.toSeq, "arrival"),
+        skipped: live.stops.some(([seq, , , , skipped]) => skipped && (seq === d.fromSeq || seq === d.toSeq)),
+        departDelayS: departureUpdate?.delayS ?? null,
+        arriveDelayS: arrivalUpdate?.delayS ?? null,
+        departureUpdate,
+        arrivalUpdate,
+        feedAt: timestamps[d.tripId],
       };
     });
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Apply the time window after live delays, so late buses remain visible. */
+export function upcomingBuses(deps: BusDeparture[], now: Date): BusDeparture[] {
+  const nowS = (now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds();
+  const departure = (d: BusDeparture) => d.departS + (d.departDelayS ?? 0);
+  return deps.filter((d) => departure(d) >= nowS - 120).sort((a, b) => departure(a) - departure(b));
 }
 
 let packPromise: Promise<BusPack> | null = null;

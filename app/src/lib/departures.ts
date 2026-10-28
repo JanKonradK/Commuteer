@@ -1,13 +1,16 @@
 // Loads the next trains for a saved commute and predicts each one's arrival.
 
-import { api, type BoardTrain, type Station } from "./irishRail";
+import { api, type BoardTrain, hasLiveInfo, type Station } from "./irishRail";
 import type { DelayModel } from "./model";
-import { type Prediction, predictJourney } from "./predict";
+import { expectedTimeS, type Prediction, predictJourney } from "./predict";
 
 export interface DeparturesResult {
   predictions: Prediction[];
   skipped: number; // trains at your station that don't go to your destination
   fetchedAt: number;
+  arrivalBoardUnavailable?: boolean;
+  fromCode: string;
+  toCode: string;
 }
 
 const MAX_TRAINS = 10;
@@ -31,7 +34,12 @@ export async function loadDepartures(
   from: Station,
   to: Station,
 ): Promise<DeparturesResult> {
-  const board = await api.board(from.code);
+  // Destination boards can fail independently; keep departure and model results.
+  const [board, arrivalBoards] = await Promise.all([
+    api.board(from.code),
+    Promise.all(to.codes.map((code) => api.board(code).catch(() => null))),
+  ]);
+  const arrivals = arrivalBoards.flatMap((b) => b ?? []);
   const candidates = board
     .filter((t: BoardTrain) => t.locationType !== "D" && t.dueInMin >= -1)
     .sort((a, b) => a.dueInMin - b.dueInMin)
@@ -45,6 +53,15 @@ export async function loadDepartures(
       return null; // one train failing shouldn't hide the others
     }
   });
-  const predictions = outcomes.flatMap((o) => (o?.ok ? [o.prediction] : []));
-  return { predictions, skipped: candidates.length - predictions.length, fetchedAt: Date.now() };
+  const predictions = outcomes.flatMap((o) => {
+    if (!o?.ok) return [];
+    const p = o.prediction;
+    const arrival = arrivals.find((t) => t.code === p.train.code && t.trainDate === p.train.trainDate);
+    return [{ ...p, liveArrivalS: arrival && hasLiveInfo(arrival) ? expectedTimeS(arrival.expArrival, p.scheduledArrivalS) : null }];
+  });
+  return {
+    predictions, skipped: candidates.length - predictions.length, fetchedAt: Date.now(),
+    arrivalBoardUnavailable: arrivalBoards.some((b) => b === null),
+    fromCode: from.code, toCode: to.code,
+  };
 }

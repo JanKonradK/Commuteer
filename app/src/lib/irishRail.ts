@@ -21,6 +21,8 @@ export interface BoardTrain {
   destination: string;
   schDepart: string; // "HH:MM" at the queried station
   expDepart: string;
+  expArrival?: string;
+  status?: string;
   lateMin: number;
   dueInMin: number;
   lastLocation: string;
@@ -43,6 +45,10 @@ export interface Movements {
   trainDate: string;
   route: string; // "Origin > Destination", as in training
   stops: MovementStop[]; // sorted by order
+}
+
+export function hasLiveInfo(train: BoardTrain): boolean {
+  return !!train.status && train.status.toLowerCase() !== "no information";
 }
 
 function baseUrl(): string {
@@ -114,6 +120,8 @@ export function parseStationBoard(doc: Document): BoardTrain[] {
     destination: field(el, "Destination"),
     schDepart: field(el, "Schdepart"),
     expDepart: field(el, "Expdepart"),
+    expArrival: field(el, "Exparrival"),
+    status: field(el, "Status"),
     lateMin: Number(field(el, "Late")) || 0,
     dueInMin: Number(field(el, "Duein")) || 0,
     lastLocation: field(el, "Lastlocation"),
@@ -191,7 +199,7 @@ export const api = {
   stations: async () => parseStations(await fetchXml("getAllStationsXML")),
   board: async (stationCode: string, minutes = 90) =>
     parseStationBoard(
-      await fetchXml(`getStationDataByCodeXML?StationCode=${encodeURIComponent(stationCode)}&NumMins=${minutes}`),
+      await fetchXml(`getStationDataByCodeXML_WithNumMins?StationCode=${encodeURIComponent(stationCode)}&NumMins=${minutes}`),
     ),
   movements: async (trainCode: string, trainDate: string) =>
     parseMovements(

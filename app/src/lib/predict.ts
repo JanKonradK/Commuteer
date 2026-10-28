@@ -15,6 +15,16 @@ export interface Prediction {
   chanceOnTime: number; // P(arrive no more than ON_TIME_LIMIT_MIN late)
   observedAt: string; // where the current delay was last measured
   currentDelayMin: number;
+  liveArrivalS?: number | null; // Irish Rail's destination board, separate from the model
+}
+
+/** Put a board clock time on the same day as the scheduled call. */
+export function expectedTimeS(time: string | undefined, scheduledS: number): number | null {
+  if (!time || !/^\d{2}:\d{2}$/.test(time) || time === "00:00") return null;
+  const [h, m] = time.split(":").map(Number);
+  if (h > 23 || m > 59) return null;
+  const s = (h * 60 + m) * 60;
+  return s + Math.round((scheduledS - s) / DAY_S) * DAY_S;
 }
 
 export type Outcome = { ok: true; prediction: Prediction } | { ok: false; reason: string };

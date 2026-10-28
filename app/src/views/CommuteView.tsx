@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { BusDetails } from "../BusDetails";
 import { type BusPack, groupStops, loadPack } from "../lib/buses";
 import { type Commute, type Connection, commuteStore, connections, type Leg, type LegTrip, reverse } from "../lib/commute";
 import { type Shuttle, stopsOf } from "../lib/shuttles";
@@ -16,8 +17,12 @@ function spareText(min: number | null): string {
 }
 
 const legName = (t: LegTrip) => (t.kind === "bus" ? `🚌 Bus ${t.label}` : `🚐 ${t.label}`);
-const liveText = (t: LegTrip) =>
-  t.kind === "bus" ? delayText(t.live ? (t.arriveS - t.scheduledArriveS) / 60 : null) : "";
+const liveText = (t: LegTrip) => {
+  if (t.kind !== "bus") return "";
+  const delayMin = t.live ? (t.arriveS - t.scheduledArriveS) / 60 : null;
+  const label = delayMin !== null && Math.round(delayMin) === 0 ? "No delay reported" : delayText(delayMin);
+  return `${t.busInfo?.arrivalUpdate?.source === "carried" ? "Estimated · " : t.live ? "Stop update · " : ""}${label}`;
+};
 
 /** One stop on the timeline: time | dot | place + what happens next. */
 function Stop(props: { s: number; scheduledS?: number; place: string; children?: React.ReactNode; last?: boolean }) {
@@ -39,6 +44,7 @@ function ConnectionCard(props: {
   places: [string, string, string, string];
   open: boolean;
   onToggle: () => void;
+  pack: BusPack;
 }) {
   const { c, places } = props;
   const last = c.second ?? c.first;
@@ -63,7 +69,12 @@ function ConnectionCard(props: {
           <span className="expand">{props.open ? "▴" : "▾"}</span>
         </div>
       </button>
-      {props.open && (
+      {props.open && <>
+        {(c.first.busInfo?.arrivalUpdate?.source === "carried" || c.second?.busInfo?.departureUpdate?.source === "carried") && (
+          <p className="muted small bus-estimate-note">Connection uses an estimated bus time. Allow extra time.</p>
+        )}
+        {c.first.busInfo && <BusDetails d={c.first.busInfo} pack={props.pack} />}
+        {c.second?.busInfo && <BusDetails d={c.second.busInfo} pack={props.pack} />}
         <ol className="timeline">
           <Stop s={c.first.departS} scheduledS={c.first.scheduledDepartS} place={places[0]}>
             {legName(c.first)}
@@ -86,7 +97,7 @@ function ConnectionCard(props: {
             </li>
           )}
         </ol>
-      )}
+      </>}
     </li>
   );
 }
@@ -224,6 +235,7 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
             <ConnectionCard
               key={key}
               c={c}
+              pack={pack}
               walkMin={commute.walkMin}
               places={places}
               open={open}
