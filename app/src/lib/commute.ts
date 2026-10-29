@@ -16,7 +16,7 @@ export interface Commute {
 }
 
 export interface LegTrip {
-  kind: "bus" | "shuttle";
+  kind: "bus" | "shuttle" | "walk";
   label: string; // route number or shuttle name
   departS: number; // best estimate (live if known)
   arriveS: number;
@@ -25,6 +25,7 @@ export interface LegTrip {
   live: boolean;
   canceled: boolean;
   busInfo?: BusDeparture;
+  userEstimate?: boolean;
 }
 
 export interface Connection {
@@ -32,6 +33,20 @@ export interface Connection {
   second: LegTrip | null; // null: nothing catchable today
   spareMin: number | null; // minutes to spare at the change, after walking
   changedFrom?: LegTrip; // the timetable connection that live updates replaced
+  stage?: JourneyStage;
+  overnight?: boolean;
+  longWait?: boolean;
+  positionUncertain?: boolean;
+}
+
+export type JourneyStage = "start" | "first" | "transfer" | "secondStop";
+export interface JourneyContext {
+  stage: JourneyStage;
+  first?: LegTrip; // a chosen first leg, including a user-confirmed actual departure
+}
+
+export function connectionKey(c: Connection): string {
+  return `${c.first.kind === "walk" ? "current-position" : tripKey(c.first)}>${c.second ? tripKey(c.second) : "none"}`;
 }
 
 export interface CommutePlan {
@@ -97,12 +112,22 @@ export async function planCommute(
   shuttles: Shuttle[],
   now: Date,
   count = 4,
+  context: JourneyContext = { stage: "start" },
 ): Promise<CommutePlan> {
   const nowS = (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 1000;
-  const walkMin = Number.isFinite(commute.walkMin) ? Math.min(60, Math.max(0, commute.walkMin)) : 5;
+  const walkMin = context.stage === "secondStop" ? 0 : Number.isFinite(commute.walkMin) ? Math.min(60, Math.max(0, commute.walkMin)) : 5;
   const warnings: string[] = [];
+  if (context.stage === "first" && !context.first) {
+    return { connections: [], warnings: ["Select the first leg you boarded to calculate the remaining journey."], walkMin, feedAt: null, fetchedAt: Date.now() };
+  }
+  let firstLegs = legTrips(commute.legs[0], pack, shuttles, now, nowS, 720);
+  if (context.stage === "first" && context.first) firstLegs = [context.first];
+  if (context.stage === "transfer" || context.stage === "secondStop") {
+    firstLegs = [{ kind: "walk", label: "Your current position", departS: nowS, arriveS: nowS,
+      scheduledDepartS: nowS, scheduledArriveS: nowS, live: false, canceled: false }];
+  }
   const legs = [
-    legTrips(commute.legs[0], pack, shuttles, now, nowS, 720),
+    firstLegs,
     legTrips(commute.legs[1], pack, shuttles, now, nowS, 900),
   ];
   const buses = legs.flat().flatMap((t) => t.busInfo ? [t.busInfo] : []);
@@ -113,11 +138,11 @@ export async function planCommute(
     warnings.push("Live bus times unavailable. Routes use the timetable. Refresh before you leave.");
   }
   let i = 0;
-  const [firsts, seconds] = legs.map((trips) => trips.map((t) => t.busInfo ? fromBus(updated[i++]) : t)
-    .filter((t) => !t.canceled && !t.busInfo?.skipped && t.departS >= nowS)
+  const [firsts, seconds] = legs.map((trips, legIndex) => trips.map((t) => t.busInfo ? fromBus(updated[i++]) : t)
+    .filter((t) => !t.canceled && !t.busInfo?.skipped && (t.departS >= nowS || (legIndex === 0 && context.stage === "first" && context.first && tripKey(t) === tripKey(context.first))))
     .sort((a, b) => a.departS - b.departS));
   const all = firsts.map((first) => {
-    const ready = first.arriveS + walkMin * 60;
+    const ready = Math.max(nowS, first.arriveS) + walkMin * 60;
     // A later express bus can arrive before an earlier slow service.
     const second = seconds.filter((t) => t.departS >= ready)
       .sort((a, b) => a.arriveS - b.arriveS || b.departS - a.departS)[0] ?? null;
@@ -127,6 +152,10 @@ export async function planCommute(
     return {
       first, second, spareMin: second ? (second.departS - ready) / 60 : null,
       changedFrom: scheduledSecond && (!second || tripKey(scheduledSecond) !== tripKey(second)) ? scheduledSecond : undefined,
+      stage: context.stage,
+      overnight: !!second && second.departS >= 86400 && first.arriveS < 86400,
+      longWait: !!second && second.departS - ready > 120 * 60,
+      positionUncertain: context.stage === "first" && first.arriveS < nowS,
     };
   });
   // Several first legs often feed the same second leg (e.g. three shuttles, one bus home).

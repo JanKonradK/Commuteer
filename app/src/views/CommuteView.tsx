@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BusDetails } from "../BusDetails";
+import { JourneyControls } from "../JourneyControls";
+import { currentJourney, isChosen, localDay, routeKey, saveJourney, type JourneyState } from "../lib/journey";
 import { type BusPack, busTimeSource, groupStops, loadPack, packExpired } from "../lib/buses";
 import { type Commute, type Connection, commuteStore, planCommute, type Leg, type LegTrip, reverse } from "../lib/commute";
 import { clock } from "../lib/predict";
@@ -17,8 +19,8 @@ function spareText(min: number | null): string {
   return m <= 0 ? "Just makes it" : `${m} min to spare`;
 }
 
-const legName = (t: LegTrip) => (t.kind === "bus" ? `🚌 Bus ${t.label}` : `🚐 ${t.label}`);
-const timeSource = (t: LegTrip, end: "departure" | "arrival") => t.kind === "shuttle"
+const legName = (t: LegTrip) => (t.kind === "bus" ? `🚌 Bus ${t.label}` : t.kind === "walk" ? "Your current position" : `🚐 ${t.label}`);
+const timeSource = (t: LegTrip, end: "departure" | "arrival") => t.userEstimate ? "Your estimate" : t.kind === "shuttle"
   ? "Shuttle timetable"
   : busTimeSource(end === "departure" ? t.busInfo?.departureUpdate : t.busInfo?.arrivalUpdate);
 const liveText = (t: LegTrip) => {
@@ -52,25 +54,29 @@ export function ConnectionCard(props: {
   now: number;
   stale: boolean;
   fastest: boolean;
+  chosen?: boolean;
+  onChoose?: () => void;
 }) {
   const { c, places } = props;
   const last = c.second ?? c.first;
-  const tone = spareTone(c.spareMin);
+  const tone = c.overnight || c.longWait ? "bad" : c.positionUncertain ? "ok" : spareTone(c.spareMin);
+  const remaining = c.stage === "first" || c.first.kind === "walk";
   return (
     <li className={`card ${tone}`}>
       <button className="card-head" onClick={props.onToggle} aria-expanded={props.open}>
         <Times
-          departS={c.first.departS}
-          scheduledDepartS={c.first.scheduledDepartS}
+          departS={remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.departS}
+          scheduledDepartS={remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.scheduledDepartS}
           arriveS={last.arriveS}
           scheduledArriveS={last.scheduledArriveS}
           nowS={props.stale ? undefined : secondsSinceMidnight(new Date(props.now))}
-          departLabel={props.stale ? "Leave · last update" : `Leave · ${timeSource(c.first, "departure").toLowerCase()}`}
-          arriveLabel={!c.second ? "Transfer only" : props.stale ? "Arrive · last update" : `Arrive · ${timeSource(last, "arrival").toLowerCase()}`}
+          departLabel={remaining ? "Continue from now" : props.stale ? "Leave · last update" : `Leave · ${timeSource(c.first, "departure").toLowerCase()}`}
+          arriveLabel={!c.second ? "Transfer only" : c.second.arriveS >= 86400 ? "Arrive · tomorrow" : props.stale ? "Arrive · last update" : `Arrive · ${timeSource(last, "arrival").toLowerCase()}`}
         />
         <div className="chips">
-          <Chip tone={tone}>{spareText(c.spareMin)}</Chip>
-          {props.fastest && c.second && <Chip tone="good">Earliest arrival</Chip>}
+          <Chip tone={tone}>{c.overnight ? "Overnight wait · next day" : c.longWait ? "Long wait" : c.positionUncertain ? "Confirm where you are" : spareText(c.spareMin)}</Chip>
+          {props.chosen && <Chip tone="good">Your chosen journey</Chip>}
+          {props.fastest && c.second && !c.overnight && !c.longWait && !c.positionUncertain && <Chip tone="good">Earliest arrival</Chip>}
           {[c.first, c.second].filter((t): t is LegTrip => t !== null && t.kind === "bus").map((t, i) => (
             <Chip key={i} tone={props.stale ? "none" : t.live ? delayTone((t.arriveS - t.scheduledArriveS) / 60) : "none"}>
               Bus {t.label} · {props.stale ? "Last known times" : liveText(t)}
@@ -80,10 +86,15 @@ export function ConnectionCard(props: {
         </div>
       </button>
       {c.second && <div className="journey-stats">
-        <span>{Math.ceil((c.second.arriveS - c.first.departS) / 60)} min total</span>
+        <span>{Math.ceil((c.second.arriveS - (remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.departS)) / 60)} min {remaining ? "remaining" : "total"}</span>
         <span>{props.walkMin} min walk</span>
         <span>{Math.max(0, Math.floor(c.spareMin ?? 0))} min wait</span>
       </div>}
+      {props.onChoose && c.second && <button className="choose-journey" onClick={props.onChoose} aria-pressed={!!props.chosen}>
+        {props.chosen ? "Journey selected" : "Choose this journey"}
+      </button>}
+      {c.overnight && <p className="route-warning">This connection is tomorrow. It does not catch tonight’s bus.</p>}
+      {c.positionUncertain && <p className="route-warning">Your first-leg arrival time has passed. This route assumes you reach {places[1]} now. Confirm your position or edit the arrival time above.</p>}
       {c.changedFrom && <p className="muted small bus-estimate-note" role="status">
         Connection changed after live updates. {c.second ? `Take ${legName(c.second)} at ${clock(c.second.departS)}.` : "No later connection is available."}
       </p>}
@@ -92,18 +103,20 @@ export function ConnectionCard(props: {
           <p className="muted small bus-estimate-note">Connection uses an estimated bus time. Allow extra time.</p>
         )}
         <ol className="timeline">
-          <Stop s={c.first.departS} scheduledS={c.first.scheduledDepartS} place={places[0]}>
+          {c.first.kind !== "walk" && <Stop s={c.first.departS} scheduledS={c.first.scheduledDepartS} place={places[0]}>
             {legName(c.first)} · leave · {timeSource(c.first, "departure")}
-          </Stop>
-          <Stop s={c.first.arriveS} scheduledS={c.first.scheduledArriveS} place={places[1]}>
-            Arrive · {timeSource(c.first, "arrival")}<br />
-            🚶 {props.walkMin} min walk to {places[2]} · ready at {clock(c.first.arriveS + props.walkMin * 60)}
+          </Stop>}
+          <Stop s={Math.max(c.first.arriveS, remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.arriveS)}
+            scheduledS={c.first.kind === "walk" ? undefined : c.first.scheduledArriveS}
+            place={c.stage === "secondStop" ? places[2] : places[1]}>
+            {c.first.kind === "walk" ? "You are here" : `Arrive · ${timeSource(c.first, "arrival")}`}<br />
+            {props.walkMin > 0 ? `🚶 ${props.walkMin} min walk to ${places[2]} · ready at ${clock(Math.max(c.first.arriveS, remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.arriveS) + props.walkMin * 60)}` : "Ready to board here"}
           </Stop>
           {c.second ? (
             <>
               <Stop s={c.second.departS} scheduledS={c.second.scheduledDepartS} place={places[2]}>
                 {legName(c.second)} · leave · {timeSource(c.second, "departure")}<br />
-                <span className={`spare-text ${tone}`}>{spareText(c.spareMin)}</span>
+                <span className={`spare-text ${tone}`}>{c.overnight ? "Tomorrow · overnight wait" : c.longWait ? `${Math.floor((c.spareMin ?? 0) / 60)} h ${Math.floor((c.spareMin ?? 0) % 60)} min wait` : spareText(c.spareMin)}</span>
               </Stop>
               <Stop s={c.second.arriveS} scheduledS={c.second.scheduledArriveS} place={places[3]} last>
                 Arrive · {timeSource(c.second, "arrival")}
@@ -181,11 +194,18 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
   const now = useNow();
   const [pack, setPack] = useState<BusPack | null>(null);
   const [commute, setCommute] = useState<Commute>(commuteStore.get);
+  const [journey, setJourney] = useState(() => currentJourney(commute, new Date()));
   const [editing, setEditing] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
   useEffect(() => {
     void loadPack().then(setPack);
   }, []);
+  useEffect(() => {
+    if (journey.route !== routeKey(commute) || journey.day !== localDay(new Date(now))) {
+      setJourney(currentJourney(commute, new Date(now)));
+    }
+  }, [commute, journey, now]);
+  const updateJourney = (state: JourneyState) => { setJourney(state); saveJourney(state); setOpenKey(null); };
   const update = (c: Commute) => {
     setCommute(c);
     commuteStore.set(c);
@@ -193,13 +213,16 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
   };
 
   const { data, at, loading, error, refresh } = useAutoRefresh(
-    async () => (pack ? planCommute(commute, pack, shuttles, new Date()) : null),
-    [commute, pack, shuttles],
+    async () => (pack ? planCommute(commute, pack, shuttles, new Date(), 4, journey) : null),
+    [commute, pack, shuttles, journey],
   );
 
   if (!pack) return <p className="notice">…</p>;
   const stale = !!error || !!(data && (now - data.fetchedAt > 180_000 || (data.feedAt && now - data.feedAt > 300_000)));
-  const options = data?.connections.filter((c) => c.first.departS >= secondsSinceMidnight(new Date(now))) ?? [];
+  const nowS = secondsSinceMidnight(new Date(now));
+  const options = data?.connections.filter((c) =>
+    (c.stage === "first" || c.first.kind === "walk" || c.first.departS >= nowS) && (!c.second || c.second.departS >= nowS),
+  ) ?? [];
   const groups = groupStops(pack);
   const place = (l: Leg, end: "from" | "to") =>
     l.kind === "bus" ? (groups.find((g) => g.key === l[end])?.name ?? l[end]) : l[end];
@@ -220,6 +243,11 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
           ⇄
         </button>
       </div>
+      <JourneyControls key={routeKey(commute)} commute={commute} pack={pack} shuttles={shuttles}
+        state={journey} places={places} onChange={updateJourney} />
+      {journey.chosen && !options.some((c) => isChosen(journey, c)) && !loading && <p className="route-warning" role="status">
+        Your chosen journey has changed or its first leg has left. Update where you are to recalculate the remaining route.
+      </p>}
       {editing && (
         <div className="sheet">
           <small className="muted">First</small>
@@ -276,6 +304,8 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
               now={now}
               stale={stale}
               fastest={i === 0}
+              chosen={isChosen(journey, c)}
+              onChoose={() => updateJourney({ ...journey, chosen: c, first: c.first })}
               places={places}
               open={open}
               onToggle={() => setOpenKey(open ? "" : key)}
