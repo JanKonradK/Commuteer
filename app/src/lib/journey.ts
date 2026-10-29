@@ -10,6 +10,7 @@ export interface JourneyState extends JourneyContext {
   route: string;
   day: string;
   chosen?: Connection;
+  originFix?: LocationFix;
 }
 export const routeKey = (c: Commute) => JSON.stringify(c.legs);
 export const localDay = (now: Date) => `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
@@ -55,14 +56,53 @@ export function rememberPlace(name: string, fix: LocationFix): void {
   const saved = load<Record<string, LocationFix>>("place-locations", {});
   save("place-locations", { ...saved, [name]: fix });
 }
+
+/** Use the phone position to follow the selected journey without a stop picker. */
+export function followPhoneLocation(
+  state: JourneyState, commute: Commute, pack: BusPack, fix: LocationFix, now = new Date(),
+): JourneyState {
+  const age = now.getTime() - fix.timestamp;
+  if (age > 60000 || age < -60000 || !Number.isFinite(fix.accuracy) || fix.accuracy > 100 || fix.accuracy < 0) return state;
+  const anchors = journeyAnchors(commute, pack);
+  const near = (stage: JourneyStage) => anchors.filter((p) => p.stage === stage)
+    .map((p) => distanceM(fix, p)).sort((a, b) => a - b)[0] ?? Infinity;
+  const atStop = Math.min(90, Math.max(35, fix.accuracy));
+  const nowS = (now.getHours() * 60 + now.getMinutes()) * 60 + now.getSeconds();
+  const selected = state.first?.kind !== "walk" ? state.first ?? state.chosen?.first : state.chosen?.first;
+  const result = (stage: JourneyStage, walkMinOverride?: number): JourneyState => ({
+    ...state, stage, first: stage === "first" && selected?.kind !== "walk" ? selected : undefined,
+    locationBased: true, walkMinOverride,
+    second: stage === "second" ? state.second ?? state.chosen?.second ?? undefined : undefined,
+  });
+  const chosenSecond = state.second ?? state.chosen?.second;
+  if (state.stage === "second" && chosenSecond) return result("second", 0);
+  if (state.stage === "secondStop" && chosenSecond && chosenSecond.departS <= nowS && near("secondStop") > 150) return result("second", 0);
+  if (near("secondStop") <= (state.stage === "secondStop" ? 150 : atStop)) return result("secondStop", 0);
+  if (near("start") <= atStop) return { ...result("start"), originFix: state.originFix ?? fix };
+  // For the final walk, use a conservative straight-line estimate, not a claim of road routing.
+  const toBoarding = near("secondStop");
+  if (toBoarding <= 800) return result("transfer", Math.max(1, Math.ceil(toBoarding * 1.3 / 60)));
+  if (near("transfer") <= atStop) return result("transfer");
+  if (selected && selected.kind !== "walk") {
+    if (selected.departS > nowS) return { ...result("start"), originFix: state.originFix ?? fix };
+    // A chosen service plus movement away from the recorded origin is evidence of progress.
+    if (state.originFix && distanceM(state.originFix, fix) > Math.max(150, state.originFix.accuracy + fix.accuracy)) {
+      return result("first");
+    }
+    if (state.originFix && distanceM(state.originFix, fix) <= atStop) return result("start");
+    if (state.stage === "first") return result("first");
+    if (!state.originFix) return { ...result("start"), originFix: fix };
+  }
+  return result("start");
+}
 export async function locate(): Promise<LocationFix> {
   if (Capacitor.isNativePlatform()) {
     let permission = await Geolocation.checkPermissions();
-    if (permission.location !== "granted" && permission.coarseLocation !== "granted") {
+    if (permission.location !== "granted" && permission.coarseLocation !== "granted" && permission.location !== "denied") {
       permission = await Geolocation.requestPermissions({ permissions: ["location"] });
     }
     if (permission.location !== "granted" && permission.coarseLocation !== "granted") {
-      throw new Error("Location permission is off. Select your position manually.");
+      throw new Error("Location permission is off. Enable it in Android app settings.");
     }
   }
   const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 });

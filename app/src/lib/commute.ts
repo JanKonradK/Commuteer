@@ -39,10 +39,13 @@ export interface Connection {
   positionUncertain?: boolean;
 }
 
-export type JourneyStage = "start" | "first" | "transfer" | "secondStop";
+export type JourneyStage = "start" | "first" | "transfer" | "secondStop" | "second";
 export interface JourneyContext {
   stage: JourneyStage;
   first?: LegTrip; // a chosen first leg, including a user-confirmed actual departure
+  locationBased?: boolean;
+  walkMinOverride?: number;
+  second?: LegTrip;
 }
 
 export function connectionKey(c: Connection): string {
@@ -115,20 +118,21 @@ export async function planCommute(
   context: JourneyContext = { stage: "start" },
 ): Promise<CommutePlan> {
   const nowS = (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 1000;
-  const walkMin = context.stage === "secondStop" ? 0 : Number.isFinite(commute.walkMin) ? Math.min(60, Math.max(0, commute.walkMin)) : 5;
+  const requestedWalk = context.walkMinOverride ?? commute.walkMin;
+  const walkMin = context.stage === "secondStop" || context.stage === "second" ? 0 : Number.isFinite(requestedWalk) ? Math.min(60, Math.max(0, requestedWalk)) : 5;
   const warnings: string[] = [];
   if (context.stage === "first" && !context.first) {
-    return { connections: [], warnings: ["Select the first leg you boarded to calculate the remaining journey."], walkMin, feedAt: null, fetchedAt: Date.now() };
+    return { connections: [], warnings: ["Waiting for phone location to update the remaining journey."], walkMin, feedAt: null, fetchedAt: Date.now() };
   }
   let firstLegs = legTrips(commute.legs[0], pack, shuttles, now, nowS, 720);
   if (context.stage === "first" && context.first) firstLegs = [context.first];
-  if (context.stage === "transfer" || context.stage === "secondStop") {
+  if (context.stage === "transfer" || context.stage === "secondStop" || context.stage === "second") {
     firstLegs = [{ kind: "walk", label: "Your current position", departS: nowS, arriveS: nowS,
       scheduledDepartS: nowS, scheduledArriveS: nowS, live: false, canceled: false }];
   }
   const legs = [
     firstLegs,
-    legTrips(commute.legs[1], pack, shuttles, now, nowS, 900),
+    context.stage === "second" && context.second ? [context.second] : legTrips(commute.legs[1], pack, shuttles, now, nowS, 900),
   ];
   const buses = legs.flat().flatMap((t) => t.busInfo ? [t.busInfo] : []);
   let updated = buses;
@@ -139,12 +143,14 @@ export async function planCommute(
   }
   let i = 0;
   const [firsts, seconds] = legs.map((trips, legIndex) => trips.map((t) => t.busInfo ? fromBus(updated[i++]) : t)
-    .filter((t) => !t.canceled && !t.busInfo?.skipped && (t.departS >= nowS || (legIndex === 0 && context.stage === "first" && context.first && tripKey(t) === tripKey(context.first))))
+    .filter((t) => !t.canceled && !t.busInfo?.skipped && (t.departS >= nowS
+      || (legIndex === 0 && context.stage === "first" && context.first && tripKey(t) === tripKey(context.first))
+      || (legIndex === 1 && context.stage === "second" && context.second && tripKey(t) === tripKey(context.second))))
     .sort((a, b) => a.departS - b.departS));
   const all = firsts.map((first) => {
     const ready = Math.max(nowS, first.arriveS) + walkMin * 60;
     // A later express bus can arrive before an earlier slow service.
-    const second = seconds.filter((t) => t.departS >= ready)
+    const second = seconds.filter((t) => context.stage === "second" || t.departS >= ready)
       .sort((a, b) => a.arriveS - b.arriveS || b.departS - a.departS)[0] ?? null;
     const scheduledReady = first.scheduledArriveS + walkMin * 60;
     const scheduledSecond = seconds.filter((t) => t.scheduledDepartS >= scheduledReady)

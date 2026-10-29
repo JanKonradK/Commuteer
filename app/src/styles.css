@@ -140,11 +140,11 @@ ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .bus-details a { color: var(--accent); }
 .commute-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .calculate { font-size: 0.9rem; padding: 8px 12px; }
-.journey-controls { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
-.journey-controls label { display: grid; gap: 6px; font-size: 0.9rem; }
-.journey-controls button, .choose-journey { font-size: 0.85rem; padding: 8px 10px; }
-.journey-controls summary { cursor: pointer; padding: 10px 0; font-size: 0.9rem; }
+.choose-journey { font-size: 0.85rem; padding: 8px 10px; }
 .journey-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.location-status { display: grid; gap: 6px; padding: 10px 12px; background: var(--card); border-radius: 12px; font-size: 0.85rem; }
+.location-status small { color: var(--muted); }
+.location-status button { font-size: 0.8rem; padding: 6px 8px; }
 .choose-journey[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .journey-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 0.8rem; }
 .route-warning { margin: 0; padding: 10px 12px; border-left: 3px solid var(--ok); color: var(--text); background: var(--card); font-size: 0.85rem; }

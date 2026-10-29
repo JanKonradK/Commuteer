@@ -74,7 +74,7 @@ export function ConnectionCard(props: {
           arriveLabel={!c.second ? "Transfer only" : c.second.arriveS >= 86400 ? "Arrive · tomorrow" : props.stale ? "Arrive · last update" : `Arrive · ${timeSource(last, "arrival").toLowerCase()}`}
         />
         <div className="chips">
-          <Chip tone={tone}>{c.overnight ? "Overnight wait · next day" : c.longWait ? "Long wait" : c.positionUncertain ? "Confirm where you are" : spareText(c.spareMin)}</Chip>
+          <Chip tone={tone}>{c.overnight ? "Overnight wait · next day" : c.longWait ? "Long wait" : c.positionUncertain ? "Location update needed" : spareText(c.spareMin)}</Chip>
           {props.chosen && <Chip tone="good">Your chosen journey</Chip>}
           {props.fastest && c.second && !c.overnight && !c.longWait && !c.positionUncertain && <Chip tone="good">Earliest arrival</Chip>}
           {[c.first, c.second].filter((t): t is LegTrip => t !== null && t.kind === "bus").map((t, i) => (
@@ -86,7 +86,7 @@ export function ConnectionCard(props: {
         </div>
       </button>
       {c.second && <div className="journey-stats">
-        <span>{Math.ceil((c.second.arriveS - (remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.departS)) / 60)} min {remaining ? "remaining" : "total"}</span>
+        <span>{Math.max(0, Math.ceil((c.second.arriveS - (remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.departS)) / 60))} min {remaining ? "remaining" : "total"}</span>
         <span>{props.walkMin} min walk</span>
         <span>{Math.max(0, Math.floor(c.spareMin ?? 0))} min wait</span>
       </div>}
@@ -94,7 +94,7 @@ export function ConnectionCard(props: {
         {props.chosen ? "Journey selected" : "Choose this journey"}
       </button>}
       {c.overnight && <p className="route-warning">This connection is tomorrow. It does not catch tonight’s bus.</p>}
-      {c.positionUncertain && <p className="route-warning">Your first-leg arrival time has passed. This route assumes you reach {places[1]} now. Confirm your position or edit the arrival time above.</p>}
+      {c.positionUncertain && <p className="route-warning">The first-leg timetable arrival has passed. The remaining connection is an estimate while phone location updates.</p>}
       {c.changedFrom && <p className="muted small bus-estimate-note" role="status">
         Connection changed after live updates. {c.second ? `Take ${legName(c.second)} at ${clock(c.second.departS)}.` : "No later connection is available."}
       </p>}
@@ -108,16 +108,16 @@ export function ConnectionCard(props: {
           </Stop>}
           <Stop s={Math.max(c.first.arriveS, remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.arriveS)}
             scheduledS={c.first.kind === "walk" ? undefined : c.first.scheduledArriveS}
-            place={c.stage === "secondStop" ? places[2] : places[1]}>
+            place={c.first.kind === "walk" ? "Your location" : places[1]}>
             {c.first.kind === "walk" ? "You are here" : `Arrive · ${timeSource(c.first, "arrival")}`}<br />
-            {props.walkMin > 0 ? `🚶 ${props.walkMin} min walk to ${places[2]} · ready at ${clock(Math.max(c.first.arriveS, remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.arriveS) + props.walkMin * 60)}` : "Ready to board here"}
+            {c.stage === "second" ? "Following your chosen second leg" : props.walkMin > 0 ? `🚶 ${props.walkMin} min walk to ${places[2]} · ready at ${clock(Math.max(c.first.arriveS, remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.arriveS) + props.walkMin * 60)}` : "Ready to board here"}
           </Stop>
           {c.second ? (
             <>
-              <Stop s={c.second.departS} scheduledS={c.second.scheduledDepartS} place={places[2]}>
+              {c.stage !== "second" && <Stop s={c.second.departS} scheduledS={c.second.scheduledDepartS} place={places[2]}>
                 {legName(c.second)} · leave · {timeSource(c.second, "departure")}<br />
                 <span className={`spare-text ${tone}`}>{c.overnight ? "Tomorrow · overnight wait" : c.longWait ? `${Math.floor((c.spareMin ?? 0) / 60)} h ${Math.floor((c.spareMin ?? 0) % 60)} min wait` : spareText(c.spareMin)}</span>
-              </Stop>
+              </Stop>}
               <Stop s={c.second.arriveS} scheduledS={c.second.scheduledArriveS} place={places[3]} last>
                 Arrive · {timeSource(c.second, "arrival")}
               </Stop>
@@ -221,7 +221,7 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
   const stale = !!error || !!(data && (now - data.fetchedAt > 180_000 || (data.feedAt && now - data.feedAt > 300_000)));
   const nowS = secondsSinceMidnight(new Date(now));
   const options = data?.connections.filter((c) =>
-    (c.stage === "first" || c.first.kind === "walk" || c.first.departS >= nowS) && (!c.second || c.second.departS >= nowS),
+    (c.stage === "first" || c.first.kind === "walk" || c.first.departS >= nowS) && (c.stage === "second" || !c.second || c.second.departS >= nowS),
   ) ?? [];
   const groups = groupStops(pack);
   const place = (l: Leg, end: "from" | "to") =>
@@ -246,7 +246,7 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
       <JourneyControls key={routeKey(commute)} commute={commute} pack={pack} shuttles={shuttles}
         state={journey} places={places} onChange={updateJourney} />
       {journey.chosen && !options.some((c) => isChosen(journey, c)) && !loading && <p className="route-warning" role="status">
-        Your chosen journey has changed or its first leg has left. Update where you are to recalculate the remaining route.
+        Your chosen connection has changed. Routes recalculate automatically from your phone location.
       </p>}
       {editing && (
         <div className="sheet">
@@ -305,7 +305,7 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
               stale={stale}
               fastest={i === 0}
               chosen={isChosen(journey, c)}
-              onChoose={() => updateJourney({ ...journey, chosen: c, first: c.first })}
+              onChoose={() => updateJourney({ ...journey, chosen: c, first: c.first, originFix: undefined })}
               places={places}
               open={open}
               onToggle={() => setOpenKey(open ? "" : key)}

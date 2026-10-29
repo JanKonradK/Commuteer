@@ -3,7 +3,7 @@ import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
 import { type BusPack } from "../src/lib/buses";
 import { type Commute, type LegTrip, planCommute } from "../src/lib/commute";
-import { currentJourney, distanceM, isChosen, journeyAnchors, localDay, locate, nearbyPlaces, routeKey, saveJourney } from "../src/lib/journey";
+import { currentJourney, distanceM, followPhoneLocation, isChosen, journeyAnchors, localDay, locate, nearbyPlaces, routeKey, saveJourney } from "../src/lib/journey";
 import { parseRows, type Shuttle } from "../src/lib/shuttles";
 import { ConnectionCard } from "../src/views/CommuteView";
 
@@ -122,4 +122,54 @@ it("handles Android permission denial without requesting a position", async () =
   const position = vi.spyOn(Geolocation, "getCurrentPosition");
   await expect(locate()).rejects.toThrow("permission is off");
   expect(position).not.toHaveBeenCalled();
+});
+
+describe("automatic phone location", () => {
+  const state = { route: routeKey(commute), day: localDay(now), stage: "start" as const };
+  const fix = { latitude: 53.5652, longitude: -7.7662, accuracy: 20, timestamp: now.getTime() };
+
+  it("automatically starts at the second bus stop without asking", () => {
+    const result = followPhoneLocation(state, commute, pack, fix, now);
+    expect(result.stage).toBe("secondStop");
+    expect(result.walkMinOverride).toBe(0);
+    expect(result.locationBased).toBe(true);
+  });
+
+  it("estimates the remaining walk from the phone position", () => {
+    const result = followPhoneLocation(state, commute, pack, { ...fix, latitude: fix.latitude + 0.003 }, now);
+    expect(result.stage).toBe("transfer");
+    expect(result.walkMinOverride).toBeGreaterThan(5);
+    expect(result.walkMinOverride).toBeLessThan(10);
+  });
+
+  it("ignores stale and inaccurate phone fixes", () => {
+    expect(followPhoneLocation(state, commute, pack, { ...fix, accuracy: 500 }, now)).toBe(state);
+    expect(followPhoneLocation(state, commute, pack, { ...fix, timestamp: now.getTime() - 61000 }, now)).toBe(state);
+  });
+
+  it("follows the chosen first leg when the phone moves away from its starting point", () => {
+    const originFix = { ...fix, latitude: 53.59 };
+    const result = followPhoneLocation({ ...state, first, chosen: { first, second: null, spareMin: null }, originFix }, commute, pack,
+      { ...fix, latitude: 53.58 }, now);
+    expect(result.stage).toBe("first");
+    expect(result.first).toEqual(first);
+    expect(followPhoneLocation({ ...state, first, originFix }, commute, pack, originFix, now).stage).toBe("start");
+  });
+
+  it("does not switch away from a stop because of small GPS changes", () => {
+    const result = followPhoneLocation({ ...state, stage: "secondStop" }, commute, pack, { ...fix, latitude: fix.latitude + 0.001 }, now);
+    expect(result.stage).toBe("secondStop");
+  });
+
+  it("keeps tracking the chosen second bus after it leaves the stop", async () => {
+    feed();
+    const atStop = await planCommute(commute, pack, [shuttle], now, 4, { stage: "secondStop" });
+    const later = new Date(2026, 9, 28, 21, 51);
+    const next = followPhoneLocation({ ...state, stage: "secondStop", chosen: atStop.connections[0] }, commute, pack,
+      { ...fix, latitude: fix.latitude - 0.004, timestamp: later.getTime() }, later);
+    expect(next.stage).toBe("second");
+    const moving = await planCommute(commute, pack, [shuttle], later, 4, next);
+    expect(moving.connections[0].second?.busInfo?.tripId).toBe("late");
+    expect(moving.walkMin).toBe(0);
+  });
 });
