@@ -22,7 +22,7 @@ export function BusDetails({ d, pack }: { d: BusDeparture; pack: BusPack }) {
         <p><strong>Arrive:</strong> {describe(d.arrivalUpdate)}</p>
         <p>Timetable: {clock(d.departS)} → {clock(d.arriveS)}</p>
         {d.feedAt && ageS !== null && (
-          <p>TFI feed: {new Date(d.feedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          <p>TFI feed: {new Date(d.feedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" })}
             {" · "}{ageS < 60 ? `${ageS} sec ago` : `${Math.floor(ageS / 60)} min ago`}
             {ageS > 300 ? " · out of date" : ""}
           </p>

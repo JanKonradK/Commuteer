@@ -76,7 +76,7 @@ export function UpdateBanner({ updates }: { updates: ReturnType<typeof useUpdate
   return null;
 }
 
-/** Version line with a manual check, shown at the bottom of the app. */
+/** Version and a manual update check, shown in Settings. */
 export function VersionLine({ updates }: { updates: ReturnType<typeof useUpdates> }) {
   const { state, check } = updates;
   const status =
@@ -88,12 +88,14 @@ export function VersionLine({ updates }: { updates: ReturnType<typeof useUpdates
           ? state.message
           : "";
   return (
-    <footer className="version">
-      <span>Commuteer {APP_VERSION}</span>
-      {status && <span> · {status}</span>}
-      <button className="link" onClick={() => void check()} disabled={state.kind === "checking"}>
+    <div className="version">
+      <span className="row-text">
+        <span>Commuteer {APP_VERSION}</span>
+        {status && <small>{status}</small>}
+      </span>
+      <button onClick={() => void check()} disabled={state.kind === "checking"}>
         Check for updates
       </button>
-    </footer>
+    </div>
   );
 }

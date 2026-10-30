@@ -48,3 +48,17 @@ it("keeps the last result and shows an error when a refresh fails", async () => 
   expect(state.error).toBe("Offline");
   expect(state.loading).toBe(false);
 });
+
+it("does not refresh in the background and catches up when reopened", async () => {
+  vi.useFakeTimers();
+  const load = vi.fn().mockResolvedValue("live");
+  await act(async () => root.render(<Board load={load} route="A" />));
+  const hidden = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+  await act(async () => vi.advanceTimersByTimeAsync(10 * 60_000));
+  expect(load).toHaveBeenCalledTimes(1);
+  hidden.mockReturnValue("visible");
+  await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+  expect(load).toHaveBeenCalledTimes(2);
+  hidden.mockRestore();
+  vi.useRealTimers();
+});

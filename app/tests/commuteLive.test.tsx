@@ -111,7 +111,7 @@ it("shows live leg times, the walk, wait, and recalculated journey duration", as
     places={["Start", "Transfer", "Pickup", "Work"]} walkMin={5} now={now.getTime()}
     stale={false} fastest open onToggle={() => {}} />);
   expect(html).toContain("75 min total");
-  expect(html).toContain("22 min wait");
+  expect(html).toContain("22 min to spare");
   expect(html).toContain("ready at 09:53");
   expect(html).toContain("Connection changed after live updates");
   expect(html).toContain("Shuttle timetable");

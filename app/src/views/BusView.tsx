@@ -12,7 +12,7 @@ import {
   upcomingBuses,
   busTimeSource,
 } from "../lib/buses";
-import { Chip, delayText, delayTone, StatusRow, Times, useAutoRefresh, secondsSinceMidnight, useNow } from "../ui";
+import { Chip, delayText, delayTone, RefreshButton, RouteBar, RouteSelect, Times, UpdatedText, useAutoRefresh, secondsSinceMidnight, useNow } from "../ui";
 
 function BusCard({ d, pack }: { d: BusDeparture; pack: BusPack }) {
   const now = useNow();
@@ -30,8 +30,6 @@ function BusCard({ d, pack }: { d: BusDeparture; pack: BusPack }) {
         scheduledDepartS={d.departS}
         scheduledArriveS={d.arriveS}
         nowS={d.canceled || d.skipped || stale ? undefined : secondsSinceMidnight(new Date(now))}
-        departLabel={`Leave · ${stale ? "last estimate" : busTimeSource(d.departureUpdate).toLowerCase()}`}
-        arriveLabel={`Arrive · ${stale ? "last estimate" : busTimeSource(d.arrivalUpdate).toLowerCase()}`}
       />
       <div className="chips">
         <span className="route">{d.route}</span>
@@ -74,32 +72,30 @@ export function BusView() {
     }
   }, [route, pack]);
 
-  if (!pack) return <p className="notice">…</p>;
+  if (!pack) return <p className="notice">Loading timetable…</p>;
+  const stopOptions = groups.map((g) => [g.key, g.name] as const);
   const picker = (key: "from" | "to") => (
-    <select aria-label={key} value={route[key]} onChange={(e) => setRoute({ ...route, [key]: e.target.value })}>
-      {groups.map((g) => (
-        <option key={g.key} value={g.key}>
-          {g.name}
-        </option>
-      ))}
-    </select>
+    <RouteSelect label={key === "from" ? "From" : "To"} value={route[key]} options={stopOptions}
+      onChange={(v) => setRoute({ ...route, [key]: v })} />
   );
 
   return (
     <section>
-      <div className="pickers">
-        {picker("from")}
-        <button aria-label="Swap" onClick={() => setRoute({ from: route.to, to: route.from })}>
-          ⇄
-        </button>
-        {picker("to")}
+      <RouteBar
+        from={picker("from")}
+        to={picker("to")}
+        onSwap={() => setRoute({ from: route.to, to: route.from })}
+        side={<RefreshButton loading={loading} onRefresh={refresh} />}
+      />
+      <div className="meta">
+        <span>Direct buses · next 12 h</span>
+        <UpdatedText at={at} loading={loading} stale={!!error} />
       </div>
-      <StatusRow at={at} loading={loading} stale={!!error} onRefresh={refresh} />
       {data?.warning && <p className="muted small" role="status">{data.warning}</p>}
-      {packExpired(pack, new Date()) && <p className="notice">⚠ Timetable out of date</p>}
+      {packExpired(pack, new Date()) && <p className="route-warning">Bus timetable out of date. Update the app for new times.</p>}
       {data &&
         (data.departures.length === 0 ? (
-          <p className="notice">No direct buses · 12 h</p>
+          <p className="notice">No direct buses in the next 12 hours.</p>
         ) : (
           <ul>
             {data.departures.map((d) => (

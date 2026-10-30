@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { BusDetails } from "../BusDetails";
 import { JourneyControls } from "../JourneyControls";
 import { currentJourney, isChosen, localDay, routeKey, saveJourney, type JourneyState } from "../lib/journey";
 import { type BusPack, busTimeSource, groupStops, loadPack, packExpired } from "../lib/buses";
 import { type Commute, type Connection, commuteStore, planCommute, type Leg, type LegTrip, reverse } from "../lib/commute";
 import { clock } from "../lib/predict";
-import { type Shuttle, stopsOf } from "../lib/shuttles";
-import { Chip, delayText, delayTone, StatusRow, Time, Times, useAutoRefresh, secondsSinceMidnight, useNow } from "../ui";
+import type { Shuttle } from "../lib/shuttles";
+import { Icon } from "../icons";
+import { Chip, delayText, delayTone, REFRESH_MS, RefreshButton, RouteBar, Time, Times, UpdatedText, useAutoRefresh, secondsSinceMidnight, useNow } from "../ui";
 
 function spareTone(min: number | null): "good" | "ok" | "bad" {
   if (min === null) return "bad";
@@ -44,6 +45,9 @@ function Stop(props: { s: number; scheduledS?: number; place: string; children?:
   );
 }
 
+const IDLE_REFRESH_MS = 3 * 60_000;
+const SOON_S = 30 * 60;
+
 export function ConnectionCard(props: {
   c: Connection;
   walkMin: number;
@@ -61,38 +65,37 @@ export function ConnectionCard(props: {
   const last = c.second ?? c.first;
   const tone = c.overnight || c.longWait ? "bad" : c.positionUncertain ? "ok" : spareTone(c.spareMin);
   const remaining = c.stage === "first" || c.first.kind === "walk";
+  const nowS = secondsSinceMidnight(new Date(props.now));
+  const startS = remaining ? nowS : c.first.departS;
+  const busChips = [c.first, c.second].filter((t): t is LegTrip => t !== null && t.kind === "bus");
   return (
     <li className={`card ${tone}`}>
       <button className="card-head" onClick={props.onToggle} aria-expanded={props.open}>
         <Times
-          departS={remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.departS}
-          scheduledDepartS={remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.scheduledDepartS}
+          departS={startS}
+          scheduledDepartS={remaining ? nowS : c.first.scheduledDepartS}
           arriveS={last.arriveS}
           scheduledArriveS={last.scheduledArriveS}
-          nowS={props.stale ? undefined : secondsSinceMidnight(new Date(props.now))}
-          departLabel={remaining ? "Continue from now" : props.stale ? "Leave · last update" : `Leave · ${timeSource(c.first, "departure").toLowerCase()}`}
-          arriveLabel={!c.second ? "Transfer only" : c.second.arriveS >= 86400 ? "Arrive · tomorrow" : props.stale ? "Arrive · last update" : `Arrive · ${timeSource(last, "arrival").toLowerCase()}`}
+          nowS={props.stale || remaining ? undefined : nowS}
+          departLabel={remaining ? "Continue from now" : "Leave"}
+          arriveLabel={!c.second ? "Transfer only" : c.second.arriveS >= 86400 ? "Arrive · tomorrow" : "Arrive"}
         />
         <div className="chips">
           <Chip tone={tone}>{c.overnight ? "Overnight wait · next day" : c.longWait ? "Long wait" : c.positionUncertain ? "Location update needed" : spareText(c.spareMin)}</Chip>
-          {props.chosen && <Chip tone="good">Your chosen journey</Chip>}
-          {props.fastest && c.second && !c.overnight && !c.longWait && !c.positionUncertain && <Chip tone="good">Earliest arrival</Chip>}
-          {[c.first, c.second].filter((t): t is LegTrip => t !== null && t.kind === "bus").map((t, i) => (
+          {props.chosen && <Chip tone="good">Following</Chip>}
+          {props.fastest && c.second && !c.overnight && !c.longWait && !c.positionUncertain && <Chip tone="none">Earliest arrival</Chip>}
+          {busChips.map((t, i) => (
             <Chip key={i} tone={props.stale ? "none" : t.live ? delayTone((t.arriveS - t.scheduledArriveS) / 60) : "none"}>
               Bus {t.label} · {props.stale ? "Last known times" : liveText(t)}
             </Chip>
           ))}
-          <span className="expand">{props.open ? "▴" : "▾"}</span>
+        </div>
+        <div className="card-meta">
+          {c.second && <span>{Math.max(0, Math.ceil((c.second.arriveS - startS) / 60))} min {remaining ? "remaining" : "total"}</span>}
+          {c.second && props.walkMin > 0 && <span>{props.walkMin} min walk</span>}
+          <span className={`expand ${props.open ? "open" : ""}`}>{props.open ? "Hide steps" : "Steps"}<Icon name="chevron" size={16} /></span>
         </div>
       </button>
-      {c.second && <div className="journey-stats">
-        <span>{Math.max(0, Math.ceil((c.second.arriveS - (remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.departS)) / 60))} min {remaining ? "remaining" : "total"}</span>
-        <span>{props.walkMin} min walk</span>
-        <span>{Math.max(0, Math.floor(c.spareMin ?? 0))} min wait</span>
-      </div>}
-      {props.onChoose && c.second && <button className="choose-journey" onClick={props.onChoose} aria-pressed={!!props.chosen}>
-        {props.chosen ? "Journey selected" : "Choose this journey"}
-      </button>}
       {c.overnight && <p className="route-warning">This connection is tomorrow. It does not catch tonight’s bus.</p>}
       {c.positionUncertain && <p className="route-warning">The first-leg timetable arrival has passed. The remaining connection is an estimate while phone location updates.</p>}
       {c.changedFrom && <p className="muted small bus-estimate-note" role="status">
@@ -104,18 +107,18 @@ export function ConnectionCard(props: {
         )}
         <ol className="timeline">
           {c.first.kind !== "walk" && <Stop s={c.first.departS} scheduledS={c.first.scheduledDepartS} place={places[0]}>
-            {legName(c.first)} · leave · {timeSource(c.first, "departure")}
+            Take {legName(c.first)} · {timeSource(c.first, "departure")}
           </Stop>}
           <Stop s={Math.max(c.first.arriveS, remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.arriveS)}
             scheduledS={c.first.kind === "walk" ? undefined : c.first.scheduledArriveS}
             place={c.first.kind === "walk" ? "Your location" : places[1]}>
-            {c.first.kind === "walk" ? "You are here" : `Arrive · ${timeSource(c.first, "arrival")}`}<br />
+            {c.first.kind === "walk" ? "You are here" : `Get off · ${timeSource(c.first, "arrival")}`}<br />
             {c.stage === "second" ? "Following your chosen second leg" : props.walkMin > 0 ? `🚶 ${props.walkMin} min walk to ${places[2]} · ready at ${clock(Math.max(c.first.arriveS, remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.arriveS) + props.walkMin * 60)}` : "Ready to board here"}
           </Stop>
           {c.second ? (
             <>
               {c.stage !== "second" && <Stop s={c.second.departS} scheduledS={c.second.scheduledDepartS} place={places[2]}>
-                {legName(c.second)} · leave · {timeSource(c.second, "departure")}<br />
+                Take {legName(c.second)} · {timeSource(c.second, "departure")}<br />
                 <span className={`spare-text ${tone}`}>{c.overnight ? "Tomorrow · overnight wait" : c.longWait ? `${Math.floor((c.spareMin ?? 0) / 60)} h ${Math.floor((c.spareMin ?? 0) % 60)} min wait` : spareText(c.spareMin)}</span>
               </Stop>}
               <Stop s={c.second.arriveS} scheduledS={c.second.scheduledArriveS} place={places[3]} last>
@@ -132,70 +135,19 @@ export function ConnectionCard(props: {
         </ol>
         {c.first.busInfo && <BusDetails d={c.first.busInfo} pack={props.pack} />}
         {c.second?.busInfo && <BusDetails d={c.second.busInfo} pack={props.pack} />}
+        {props.onChoose && c.second && !props.chosen && <button className="primary choose-journey" onClick={props.onChoose}>
+          Follow this journey
+        </button>}
       </>}
     </li>
   );
 }
 
-function LegEditor(props: {
-  leg: Leg;
-  pack: BusPack;
-  shuttles: Shuttle[];
-  onChange: (l: Leg) => void;
-}) {
-  const groups = useMemo(() => groupStops(props.pack), [props.pack]);
-  const { leg } = props;
-  const kind = (
-    <select
-      aria-label="Mode"
-      value={leg.kind === "bus" ? "bus" : leg.id}
-      onChange={(e) => {
-        const v = e.target.value;
-        if (v === "bus") props.onChange({ kind: "bus", from: groups[0].key, to: groups[1].key });
-        else {
-          const s = props.shuttles.find((x) => x.id === v);
-          const stops = s ? stopsOf(s) : [];
-          props.onChange({ kind: "shuttle", id: v, from: stops[0] ?? "", to: stops[1] ?? "" });
-        }
-      }}
-    >
-      <option value="bus">🚌 Bus</option>
-      {props.shuttles.map((s) => (
-        <option key={s.id} value={s.id}>
-          🚐 {s.name}
-        </option>
-      ))}
-    </select>
-  );
-  const shuttle = leg.kind === "shuttle" ? props.shuttles.find((s) => s.id === leg.id) : undefined;
-  const options =
-    leg.kind === "bus"
-      ? groups.map((g) => [g.key, g.name] as const)
-      : (shuttle ? stopsOf(shuttle) : []).map((s) => [s, s] as const);
-  const pick = (key: "from" | "to") => (
-    <select aria-label={key} value={leg[key]} onChange={(e) => props.onChange({ ...leg, [key]: e.target.value })}>
-      {options.map(([v, label]) => (
-        <option key={v} value={v}>
-          {label}
-        </option>
-      ))}
-    </select>
-  );
-  return (
-    <div className="leg-editor">
-      {kind}
-      {pick("from")}
-      {pick("to")}
-    </div>
-  );
-}
-
-export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
+export function CommuteView({ shuttles, onOpenSettings }: { shuttles: Shuttle[]; onOpenSettings: () => void }) {
   const now = useNow();
   const [pack, setPack] = useState<BusPack | null>(null);
   const [commute, setCommute] = useState<Commute>(commuteStore.get);
   const [journey, setJourney] = useState(() => currentJourney(commute, new Date()));
-  const [editing, setEditing] = useState(false);
   const [openKey, setOpenKey] = useState<string | null>(null);
   useEffect(() => {
     void loadPack().then(setPack);
@@ -212,13 +164,25 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
     setOpenKey(null);
   };
 
+  // Live times only matter close to departure: refresh every minute when something
+  // leaves within 30 min or a journey is being followed, otherwise every 3 min.
+  const [refreshMs, setRefreshMs] = useState(REFRESH_MS);
   const { data, at, loading, error, refresh } = useAutoRefresh(
     async () => (pack ? planCommute(commute, pack, shuttles, new Date(), 4, journey) : null),
     [commute, pack, shuttles, journey],
+    refreshMs,
   );
+  useEffect(() => {
+    const nowS = secondsSinceMidnight(new Date(now));
+    const next = data?.connections.find((c) => c.stage === "first" || c.first.kind === "walk" || c.first.departS >= nowS);
+    const soon = !data || !!journey.chosen || journey.stage !== "start" || !next
+      || next.first.kind === "walk" || next.stage === "first" || next.first.departS - nowS <= SOON_S;
+    setRefreshMs(soon ? REFRESH_MS : IDLE_REFRESH_MS);
+  }, [data, journey, now]);
 
-  if (!pack) return <p className="notice">…</p>;
-  const stale = !!error || !!(data && (now - data.fetchedAt > 180_000 || (data.feedAt && now - data.feedAt > 300_000)));
+  if (!pack) return <p className="notice">Loading timetable…</p>;
+  const stale = !!error || !!(data && (now - data.fetchedAt > refreshMs + 120_000
+    || (data.feedAt && now - data.feedAt > refreshMs + 240_000)));
   const nowS = secondsSinceMidnight(new Date(now));
   const options = data?.connections.filter((c) =>
     (c.stage === "first" || c.first.kind === "walk" || c.first.departS >= nowS) && (c.stage === "second" || !c.second || c.second.departS >= nowS),
@@ -232,64 +196,53 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
     place(commute.legs[1], "from"),
     place(commute.legs[1], "to"),
   ];
+  const legText = (l: Leg) => l.kind === "bus" ? "Bus" : (shuttles.find((x) => x.id === l.id)?.name || "Shuttle");
+  const via = [legText(commute.legs[0]), commute.walkMin > 0 ? `${commute.walkMin} min walk` : "", legText(commute.legs[1])]
+    .filter(Boolean).join(" · ");
+  const chosen = journey.chosen;
+  const stopFollowing = () => updateJourney({ ...journey, stage: "start", chosen: undefined, first: undefined, second: undefined, originFix: undefined });
 
   return (
     <section>
-      <div className="pickers">
-        <button className="route-title" onClick={() => setEditing(!editing)} aria-label="Edit commute">
-          {places[0]} → {places[3]} <span className="muted">✎</span>
-        </button>
-        <button aria-label="Swap" onClick={() => update(reverse(commute))}>
-          ⇄
-        </button>
+      <h1 className="page-title">Commute</h1>
+      <RouteBar
+        from={
+          <button className="route-title" onClick={onOpenSettings} aria-label={`Edit commute: ${places[0]} to ${places[3]}`}>
+            <span className="route-name">{places[0]} <span className="muted">→</span> {places[3]}</span>
+            <span className="route-via">{via}</span>
+          </button>
+        }
+        onSwap={() => update(reverse(commute))}
+        side={<RefreshButton loading={loading} onRefresh={refresh} />}
+      />
+      <div className="meta">
+        <JourneyControls key={routeKey(commute)} commute={commute} pack={pack} shuttles={shuttles}
+          state={journey} places={places} onChange={updateJourney} />
+        <UpdatedText at={at} loading={loading} stale={!!error} />
       </div>
-      <JourneyControls key={routeKey(commute)} commute={commute} pack={pack} shuttles={shuttles}
-        state={journey} places={places} onChange={updateJourney} />
-      {journey.chosen && !options.some((c) => isChosen(journey, c)) && !loading && <p className="route-warning" role="status">
-        Your chosen connection has changed. Routes recalculate automatically from your phone location.
-      </p>}
-      {editing && (
-        <div className="sheet">
-          <small className="muted">First</small>
-          <LegEditor
-            leg={commute.legs[0]}
-            pack={pack}
-            shuttles={shuttles}
-            onChange={(l) => update({ ...commute, legs: [l, commute.legs[1]] })}
-          />
-          <label className="inline">
-            🚶 Walk
-            <input
-              type="number"
-              min={0}
-              max={60}
-              aria-label="Walking minutes"
-              value={commute.walkMin}
-              onChange={(e) => update({ ...commute, walkMin: Number(e.target.value) || 0 })}
-            />
-            min
-          </label>
-          <small className="muted">Then</small>
-          <LegEditor
-            leg={commute.legs[1]}
-            pack={pack}
-            shuttles={shuttles}
-            onChange={(l) => update({ ...commute, legs: [commute.legs[0], l] })}
-          />
+      {chosen && (
+        <div className="following" role="status">
+          <span>
+            Following {chosen.first.kind === "walk" ? "your journey" : `the ${clock(chosen.first.departS)} journey`}
+            {chosen.second && <span className="muted"> · arrive {clock(chosen.second.arriveS)}</span>}
+          </span>
+          <button onClick={stopFollowing}>Stop</button>
         </div>
       )}
-      <div className="commute-actions">
-        <button className="calculate" onClick={refresh} disabled={loading}>{loading ? "Calculating…" : "Calculate routes"}</button>
-        <StatusRow at={at} loading={loading} stale={!!error} onRefresh={refresh} />
-      </div>
-      <p className="muted small bus-estimate-note">Routes use the latest available bus times, your shuttle timetable, and the walk between stops. Updates every minute.</p>
+      {chosen && !options.some((c) => isChosen(journey, c)) && !loading && <p className="route-warning" role="status">
+        Your chosen connection has changed. Routes recalculate automatically from your phone location.
+      </p>}
       {data?.warnings.map((warning) => <p className="route-warning" role="status" key={warning}>{warning}</p>)}
-      {stale && <p className="route-warning" role="status">Times are out of date. Recalculate before you leave.</p>}
+      {stale && <p className="route-warning" role="status">Times may be out of date. Tap refresh before you leave.</p>}
       {packExpired(pack, new Date(now)) && <p className="route-warning">Bus timetable out of date. Route options may be incomplete.</p>}
       {commute.legs.some((l) => l.kind === "shuttle" && !shuttles.some((s) => s.id === l.id)) && (
-        <p className="route-warning">Add or select your shuttle timetable to calculate the full commute.</p>
+        <p className="route-warning">
+          Add your shuttle timetable to plan the full commute.
+          <button className="link" onClick={onOpenSettings}>Open Settings</button>
+        </p>
       )}
-      {data && options.length === 0 && <p className="notice">No route found for the selected stops and timetables. Change the stops or refresh for new times.</p>}
+      {!data && !error && <p className="notice">Working out your routes…</p>}
+      {data && options.length === 0 && <p className="notice">No route found for these stops and timetables. Change the stops, or refresh for new times.</p>}
       <ul>
         {options.map((c, i) => {
           const key = `${c.first.busInfo?.tripId ?? c.first.label}-${c.first.scheduledDepartS}`;
@@ -313,6 +266,9 @@ export function CommuteView({ shuttles }: { shuttles: Shuttle[] }) {
           );
         })}
       </ul>
+      {options.length > 0 && <p className="footnote">
+        Uses the latest bus times, your shuttle timetable and the walk between stops. Times refresh by themselves while the app is open.
+      </p>}
     </section>
   );
 }

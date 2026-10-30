@@ -5,7 +5,7 @@ import { DelayModel, type ModelJson } from "../lib/model";
 import { clock, expectedTimeS, type Prediction } from "../lib/predict";
 import { load, save } from "../lib/storage";
 import modelJson from "../model/delay-model.json";
-import { Chip, delayText, delayTone, REFRESH_MS, StatusRow, Times, useAutoRefresh, secondsSinceMidnight } from "../ui";
+import { Chip, delayText, delayTone, REFRESH_MS, RefreshButton, RouteBar, RouteSelect, Times, UpdatedText, useAutoRefresh, secondsSinceMidnight } from "../ui";
 
 const FALLBACK_STATIONS: Station[] = [
   { code: "ATLNE", name: "Athlone", codes: ["ATLNE"] },
@@ -114,31 +114,29 @@ export function TrainView() {
   const result = data ?? (cached?.fromCode === route.from && cached.toCode === route.to ? cached : null);
   const stale = !!error || !!(result && Date.now() - result.fetchedAt > 3 * REFRESH_MS);
 
+  const stationOptions = options.map((s) => [s.code, s.name] as const);
   const picker = (key: "from" | "to") => (
-    <select aria-label={key} value={route[key]} onChange={(e) => setRoute({ ...route, [key]: e.target.value })}>
-      {options.map((s) => (
-        <option key={s.code} value={s.code}>
-          {s.name}
-        </option>
-      ))}
-    </select>
+    <RouteSelect label={key === "from" ? "From" : "To"} value={route[key]} options={stationOptions}
+      onChange={(v) => setRoute({ ...route, [key]: v })} />
   );
 
   return (
     <section>
-      <div className="pickers">
-        {picker("from")}
-        <button aria-label="Swap" onClick={() => setRoute({ from: route.to, to: route.from })}>
-          ⇄
-        </button>
-        {picker("to")}
+      <RouteBar
+        from={picker("from")}
+        to={picker("to")}
+        onSwap={() => setRoute({ from: route.to, to: route.from })}
+        side={<RefreshButton loading={loading} onRefresh={refresh} />}
+      />
+      <div className="meta">
+        <span>Direct trains · next 90 min</span>
+        <UpdatedText at={at ?? result?.fetchedAt ?? null} loading={loading} stale={stale} />
       </div>
-      <StatusRow at={at ?? result?.fetchedAt ?? null} loading={loading} stale={stale} onRefresh={refresh} />
-      {error && !result && <p className="notice">⚠ {error}</p>}
-      {result?.arrivalBoardUnavailable && <p className="muted small">Live arrivals unavailable · showing model estimates where needed</p>}
+      {error && !result && <p className="notice">Couldn’t load trains: {error}</p>}
+      {result?.arrivalBoardUnavailable && <p className="muted small">Live arrivals unavailable. Showing model estimates where needed.</p>}
       {result &&
         (result.predictions.length === 0 ? (
-          <p className="notice">No direct trains · 90 min</p>
+          <p className="notice">No direct trains in the next 90 minutes.</p>
         ) : (
           <ul>
             {result.predictions.map((p, i) => (

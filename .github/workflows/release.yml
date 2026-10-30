@@ -86,7 +86,7 @@ jobs:
             echo
             echo "**[Commuteer-android.apk]($download/Commuteer-android.apk)**: open it on your phone and install over the existing app."
             echo
-            echo "Installed apps update themselves: tap **Install** on the update banner, or **Check for updates** at the bottom of the app."
+            echo "Installed apps update themselves: tap **Install** on the update banner, or **Check for updates** in Settings."
             echo "Your saved trips and timetables stay on the phone and are kept by updates."
           } > dist/release-notes.md
           cat dist/release-notes.md dist/release/SHA256SUMS.txt

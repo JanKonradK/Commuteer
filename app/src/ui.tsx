@@ -1,27 +1,61 @@
-// Shared UI pieces: auto-refresh, the status/refresh row, and a two-time trip line.
+// Shared UI pieces: auto-refresh, the route bar with refresh, and a two-time trip line.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { Icon } from "./icons";
 import { clock } from "./lib/predict";
 
 export const REFRESH_MS = 60_000;
+
+const visible = () => document.visibilityState !== "hidden";
+
+// One shared clock for every countdown on screen. It stops while the app is hidden
+// so the phone is not woken up just to redraw a screen nobody can see.
+const clockListeners = new Set<() => void>();
+let clockTimer: ReturnType<typeof setInterval> | undefined;
+const tickAll = () => clockListeners.forEach((f) => f());
+const onClockVisibility = () => {
+  if (clockTimer) clearInterval(clockTimer);
+  clockTimer = undefined;
+  if (visible() && clockListeners.size) {
+    tickAll();
+    clockTimer = setInterval(tickAll, 30_000);
+  }
+};
 
 /** Keep feed ages and countdowns moving between network refreshes. */
 export function useNow(): number {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(timer);
+    const update = () => setNow(Date.now());
+    clockListeners.add(update);
+    if (clockListeners.size === 1) {
+      document.addEventListener("visibilitychange", onClockVisibility);
+      if (visible()) clockTimer = setInterval(tickAll, 30_000);
+    }
+    return () => {
+      clockListeners.delete(update);
+      if (!clockListeners.size) {
+        if (clockTimer) clearInterval(clockTimer);
+        clockTimer = undefined;
+        document.removeEventListener("visibilitychange", onClockVisibility);
+      }
+    };
   }, []);
   return now;
 }
 
-/** Runs `load` now, every minute while the app is visible, and on demand. */
-export function useAutoRefresh<T>(load: () => Promise<T>, deps: unknown[]) {
+/**
+ * Runs `load` now, every `intervalMs` while the app is visible, and on demand.
+ * Nothing runs while the app is in the background; it catches up when reopened.
+ */
+export function useAutoRefresh<T>(load: () => Promise<T>, deps: unknown[], intervalMs = REFRESH_MS) {
   const [data, setData] = useState<T | null>(null);
   const [at, setAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
+  const every = useRef(intervalMs);
+  const restart = useRef<(() => void) | null>(null);
 
   // `deps` comes from the caller: whatever the load function reads (e.g. chosen stops).
   const run = useCallback(async () => {
@@ -45,40 +79,118 @@ export function useAutoRefresh<T>(load: () => Promise<T>, deps: unknown[]) {
     setData(null);
     setAt(null);
     setError(null);
-    void run();
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void run();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!visible()) return; // stop until the app is visible again
+        void run();
+        schedule();
+      }, every.current);
     };
+    const onVisible = () => {
+      if (!visible()) return;
+      void run();
+      schedule();
+    };
+    restart.current = schedule;
+    void run();
+    schedule();
     document.addEventListener("visibilitychange", onVisible);
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") void run();
-    }, REFRESH_MS);
     return () => {
       ++request.current;
-      clearInterval(timer);
+      clearTimeout(timer);
+      restart.current = null;
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [run]);
 
+  // A new interval takes effect straight away, without reloading.
+  useEffect(() => {
+    if (every.current === intervalMs) return;
+    every.current = intervalMs;
+    restart.current?.();
+  }, [intervalMs]);
+
   return { data, at, loading, error, refresh: run, setData };
 }
 
-export function StatusRow(props: { at: number | null; loading: boolean; stale: boolean; onRefresh: () => void }) {
-  const time = props.at ? new Date(props.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+/** "09:05" from a timestamp, in the same 24-hour style as every other time in the app. */
+export function wallClock(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/** "Updated 09:05", or a warning when the last refresh failed. */
+export function UpdatedText(props: { at: number | null; loading: boolean; stale: boolean }) {
+  const time = props.at ? wallClock(props.at) : "";
   return (
-    <div className="statusrow">
-      <span className={`status ${props.stale ? "stale" : ""}`}>
-        {props.loading ? "Updating…" : time && (props.stale ? `Offline · last update ${time}` : `Updated ${time}`)}
-      </span>
-      <button
-        className={`refresh ${props.loading ? "spin" : ""}`}
-        aria-label="Refresh"
-        onClick={props.onRefresh}
-        disabled={props.loading}
-      >
-        ↻
-      </button>
+    <span className={`status ${props.stale ? "stale" : ""}`}>
+      {props.loading ? "Updating…" : time && (props.stale ? `Offline · last update ${time}` : `Updated ${time}`)}
+    </span>
+  );
+}
+
+export function RefreshButton(props: { loading: boolean; onRefresh: () => void }) {
+  return (
+    <button
+      className={`icon-button refresh ${props.loading ? "spin" : ""}`}
+      aria-label="Refresh"
+      onClick={props.onRefresh}
+      disabled={props.loading}
+    >
+      <Icon name="refresh" size={20} />
+    </button>
+  );
+}
+
+/** The From / swap / To box at the top of a screen, with an optional button beside it (refresh). */
+export function RouteBar(props: { from: ReactNode; to?: ReactNode; onSwap: () => void; side?: ReactNode }) {
+  return (
+    <div className={`routebar ${props.side ? "" : "solo"}`}>
+      <div className={`route-box ${props.to ? "" : "single"}`}>
+        {props.from}
+        <button className="icon-button swap" aria-label="Swap direction" onClick={props.onSwap}>
+          <Icon name="swap" size={18} />
+        </button>
+        {props.to}
+      </div>
+      {props.side}
     </div>
+  );
+}
+
+type Options = readonly (readonly [value: string, name: string])[];
+
+/**
+ * A dropdown whose chosen value wraps onto several lines. Android's own dropdown shows
+ * only one line, so the name is shown as text and the real dropdown sits invisibly on top:
+ * tapping still opens the normal Android picker.
+ */
+export function WrapSelect(props: { label: string; value: string; options: Options; onChange: (value: string) => void }) {
+  const name = props.options.find(([v]) => v === props.value)?.[1] ?? props.value;
+  return (
+    <span className="wrap-select">
+      <span className="wrap-value">{name}</span>
+      <Icon name="chevron" size={16} />
+      <select aria-label={props.label} value={props.value} onChange={(e) => props.onChange(e.target.value)}>
+        {props.options.map(([value, option]) => (
+          <option key={value} value={value}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
+/** A From or To picker inside the route box. The whole field is the tap target. */
+export function RouteSelect(props: { label: "From" | "To"; value: string; options: Options; onChange: (value: string) => void }) {
+  return (
+    <label className="route-field">
+      <span className="route-label">{props.label}</span>
+      <WrapSelect {...props} />
+    </label>
   );
 }
 
@@ -106,7 +218,7 @@ export function secondsSinceMidnight(d = new Date()): number {
   return (d.getHours() * 60 + d.getMinutes()) * 60 + d.getSeconds();
 }
 
-/** "Leave 09:10   →   Arrive 09:55" */
+/** "Leave in 12 min  09:10 ——→ 09:55  Arrive" */
 export function Times(props: {
   departS: number;
   arriveS: number;
@@ -120,11 +232,12 @@ export function Times(props: {
     <div className="times">
       <div>
         <small>
-          {props.departLabel ?? "Leave"}{props.nowS !== undefined && <span className="countdown"> · {countdown(props.departS - props.nowS)}</span>}
+          {props.departLabel ?? "Leave"}
+          {props.nowS !== undefined && <span className="countdown"> {countdown(props.departS - props.nowS)}</span>}
         </small>
         <Time s={props.departS} scheduledS={props.scheduledDepartS} className="big" />
       </div>
-      <span className="arrow">→</span>
+      <span className="track" aria-hidden />
       <div className="arr">
         <small>{props.arriveLabel ?? "Arrive"}</small>
         <Time s={props.arriveS} scheduledS={props.scheduledArriveS} className="big" />
