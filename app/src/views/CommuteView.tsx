@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { BusDetails } from "../BusDetails";
 import { JourneyControls } from "../JourneyControls";
-import { currentJourney, isChosen, localDay, routeKey, saveJourney, type JourneyState } from "../lib/journey";
+import { currentJourney, isChosen, journeyAnchors, localDay, routeKey, saveJourney, type JourneyState } from "../lib/journey";
+import { type BusBands, loadBands } from "../lib/busOdds";
+import { getForecast, type WeatherHour, weatherAt } from "../lib/weather";
+import { WeatherChip, WeatherStrip } from "../Weather";
 import { type BusPack, busTimeSource, groupStops, loadPack, packExpired } from "../lib/buses";
 import { type Commute, type Connection, commuteStore, planCommute, type Leg, type LegTrip, reverse } from "../lib/commute";
 import { clock } from "../lib/predict";
@@ -46,6 +49,13 @@ function Stop(props: { s: number; scheduledS?: number; place: string; children?:
 }
 
 const IDLE_REFRESH_MS = 3 * 60_000;
+const WEATHER_MS = 30 * 60_000;
+/** Seconds since today's midnight (may exceed a day) to epoch milliseconds. */
+const msAt = (now: number, s: number) => { const d = new Date(now); d.setHours(0, 0, 0, 0); return d.getTime() + s * 1000; };
+const pct = (p: number) => `${Math.round(p * 100)}%`;
+const oddsTone = (p: number) => p >= 0.9 ? "good" : p >= 0.7 ? "ok" : "bad";
+/** "17:42–17:51": where ~80% of buses really arrive, by measured GPS times. */
+const windowText = (r?: [number, number]) => r && Math.round(r[1] / 60) > Math.round(r[0] / 60) ? `${clock(r[0])}–${clock(r[1])}` : null;
 const SOON_S = 30 * 60;
 
 export function ConnectionCard(props: {
@@ -60,6 +70,7 @@ export function ConnectionCard(props: {
   fastest: boolean;
   chosen?: boolean;
   onChoose?: () => void;
+  weather?: WeatherHour[] | null;
 }) {
   const { c, places } = props;
   const last = c.second ?? c.first;
@@ -68,6 +79,11 @@ export function ConnectionCard(props: {
   const nowS = secondsSinceMidnight(new Date(props.now));
   const startS = remaining ? nowS : c.first.departS;
   const busChips = [c.first, c.second].filter((t): t is LegTrip => t !== null && t.kind === "bus");
+  // You stand outside when you change: weather for the hour you wait for the second leg.
+  const waitWeather = props.weather && c.second && c.stage !== "second"
+    ? weatherAt(props.weather, msAt(props.now, c.second.departS)) : null;
+  const rideLeg = c.stage === "second" ? c.second : c.first;
+  const rideName = rideLeg?.kind === "bus" ? `bus ${rideLeg.label}` : rideLeg?.kind === "shuttle" ? "shuttle" : "trip";
   return (
     <li className={`card ${tone}`}>
       <button className="card-head" onClick={props.onToggle} aria-expanded={props.open}>
@@ -83,12 +99,17 @@ export function ConnectionCard(props: {
         <div className="chips">
           <Chip tone={tone}>{c.overnight ? "Overnight wait · next day" : c.longWait ? "Long wait" : c.positionUncertain ? "Location update needed" : spareText(c.spareMin)}</Chip>
           {props.chosen && <Chip tone="good">Following</Chip>}
+          {c.underway && !props.chosen && rideLeg && <Chip tone="ok">Under way · left {clock(rideLeg.departS)}</Chip>}
+          {c.catchChance !== undefined && c.stage !== "second" && !props.stale && (
+            <Chip tone={oddsTone(c.catchChance)}>{pct(c.catchChance)} chance you make the change</Chip>
+          )}
           {props.fastest && c.second && !c.overnight && !c.longWait && !c.positionUncertain && <Chip tone="none">Earliest arrival</Chip>}
           {busChips.map((t, i) => (
             <Chip key={i} tone={props.stale ? "none" : t.live ? delayTone((t.arriveS - t.scheduledArriveS) / 60) : "none"}>
               Bus {t.label} · {props.stale ? "Last known times" : liveText(t)}
             </Chip>
           ))}
+          {waitWeather && <WeatherChip hour={waitWeather} />}
         </div>
         <div className="card-meta">
           {c.second && <span>{Math.max(0, Math.ceil((c.second.arriveS - startS) / 60))} min {remaining ? "remaining" : "total"}</span>}
@@ -108,21 +129,25 @@ export function ConnectionCard(props: {
         <ol className="timeline">
           {c.first.kind !== "walk" && <Stop s={c.first.departS} scheduledS={c.first.scheduledDepartS} place={places[0]}>
             Take {legName(c.first)} · {timeSource(c.first, "departure")}
+            {windowText(c.first.departRange) && <><br /><span className="muted">80% of buses come {windowText(c.first.departRange)}</span></>}
           </Stop>}
           <Stop s={Math.max(c.first.arriveS, remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.arriveS)}
             scheduledS={c.first.kind === "walk" ? undefined : c.first.scheduledArriveS}
             place={c.first.kind === "walk" ? "Your location" : places[1]}>
             {c.first.kind === "walk" ? "You are here" : `Get off · ${timeSource(c.first, "arrival")}`}<br />
+            {windowText(c.first.arriveRange) && <><span className="muted">80% arrive {windowText(c.first.arriveRange)}</span><br /></>}
             {c.stage === "second" ? "Following your chosen second leg" : props.walkMin > 0 ? `🚶 ${props.walkMin} min walk to ${places[2]} · ready at ${clock(Math.max(c.first.arriveS, remaining ? secondsSinceMidnight(new Date(props.now)) : c.first.arriveS) + props.walkMin * 60)}` : "Ready to board here"}
           </Stop>
           {c.second ? (
             <>
               {c.stage !== "second" && <Stop s={c.second.departS} scheduledS={c.second.scheduledDepartS} place={places[2]}>
                 Take {legName(c.second)} · {timeSource(c.second, "departure")}<br />
+                {windowText(c.second.departRange) && <><span className="muted">80% of buses come {windowText(c.second.departRange)}</span><br /></>}
                 <span className={`spare-text ${tone}`}>{c.overnight ? "Tomorrow · overnight wait" : c.longWait ? `${Math.floor((c.spareMin ?? 0) / 60)} h ${Math.floor((c.spareMin ?? 0) % 60)} min wait` : spareText(c.spareMin)}</span>
               </Stop>}
               <Stop s={c.second.arriveS} scheduledS={c.second.scheduledArriveS} place={places[3]} last>
                 Arrive · {timeSource(c.second, "arrival")}
+                {windowText(c.second.arriveRange) && <><br /><span className="muted">80% arrive {windowText(c.second.arriveRange)}</span></>}
               </Stop>
             </>
           ) : (
@@ -135,8 +160,12 @@ export function ConnectionCard(props: {
         </ol>
         {c.first.busInfo && <BusDetails d={c.first.busInfo} pack={props.pack} />}
         {c.second?.busInfo && <BusDetails d={c.second.busInfo} pack={props.pack} />}
+        {c.catchChance !== undefined && c.stage !== "second" && <p className="muted small">
+          The chance of making the change comes from how far TFI bus estimates were from real GPS times.
+          It is based on little data so far. Use it as a guide.
+        </p>}
         {props.onChoose && c.second && !props.chosen && <button className="primary choose-journey" onClick={props.onChoose}>
-          Follow this journey
+          {c.underway ? `I’m on this ${rideName}` : "Follow this journey"}
         </button>}
       </>}
     </li>
@@ -149,9 +178,23 @@ export function CommuteView({ shuttles, onOpenSettings }: { shuttles: Shuttle[];
   const [commute, setCommute] = useState<Commute>(commuteStore.get);
   const [journey, setJourney] = useState(() => currentJourney(commute, new Date()));
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [bands, setBands] = useState<BusBands | null>(null);
+  const [weather, setWeather] = useState<WeatherHour[] | null>(null);
   useEffect(() => {
     void loadPack().then(setPack);
+    void loadBands().then(setBands).catch(() => setBands(null));
   }, []);
+  // Forecast for where you wait to change (the rural stop); cached for 30 min.
+  const weatherSlot = Math.floor(now / WEATHER_MS);
+  const anchors = pack ? journeyAnchors(commute, pack) : [];
+  const waitSpot = anchors.find((a) => a.stage === "secondStop") ?? anchors.find((a) => a.stage === "transfer") ?? anchors[0];
+  const lat = waitSpot?.latitude, lon = waitSpot?.longitude;
+  useEffect(() => {
+    if (lat === undefined || lon === undefined) return;
+    let live = true;
+    getForecast(lat, lon).then((h) => { if (live) setWeather(h); }).catch(() => { if (live) setWeather(null); });
+    return () => { live = false; };
+  }, [lat, lon, weatherSlot]);
   useEffect(() => {
     if (journey.route !== routeKey(commute) || journey.day !== localDay(new Date(now))) {
       setJourney(currentJourney(commute, new Date(now)));
@@ -168,8 +211,8 @@ export function CommuteView({ shuttles, onOpenSettings }: { shuttles: Shuttle[];
   // leaves within 30 min or a journey is being followed, otherwise every 3 min.
   const [refreshMs, setRefreshMs] = useState(REFRESH_MS);
   const { data, at, loading, error, refresh } = useAutoRefresh(
-    async () => (pack ? planCommute(commute, pack, shuttles, new Date(), 4, journey) : null),
-    [commute, pack, shuttles, journey],
+    async () => (pack ? planCommute(commute, pack, shuttles, new Date(), 4, journey, bands ?? undefined) : null),
+    [commute, pack, shuttles, journey, bands],
     refreshMs,
   );
   useEffect(() => {
@@ -187,6 +230,8 @@ export function CommuteView({ shuttles, onOpenSettings }: { shuttles: Shuttle[];
   const options = data?.connections.filter((c) =>
     (c.stage === "first" || c.first.kind === "walk" || c.first.departS >= nowS) && (c.stage === "second" || !c.second || c.second.departS >= nowS),
   ) ?? [];
+  // A trip counts as under way until it arrives, so one you are on never disappears.
+  const underway = data?.underway.filter((c) => (c.stage === "second" ? c.second! : c.first).arriveS > nowS - 60) ?? [];
   const groups = groupStops(pack);
   const place = (l: Leg, end: "from" | "to") =>
     l.kind === "bus" ? (groups.find((g) => g.key === l[end])?.name ?? l[end]) : l[end];
@@ -241,6 +286,29 @@ export function CommuteView({ shuttles, onOpenSettings }: { shuttles: Shuttle[];
           <button className="link" onClick={onOpenSettings}>Open Settings</button>
         </p>
       )}
+      {weather && <div className="weather-ahead">
+        <p className="section-label">Weather at {waitSpot?.name ?? "your stop"} · dots mark your departures</p>
+        <WeatherStrip hours={weather} now={now}
+          departures={options.flatMap((c) => c.second && c.stage !== "second" ? [msAt(now, c.second.departS)] : [])} />
+      </div>}
+      {!chosen && underway.length > 0 && <>
+        <p className="section-label">Under way now · tap if you are on board</p>
+        <ul>
+          {underway.map((c) => {
+            const leg = c.stage === "second" ? c.second! : c.first;
+            const key = `underway-${c.stage}-${leg.busInfo?.tripId ?? leg.label}-${leg.scheduledDepartS}`;
+            return (
+              <ConnectionCard key={key} c={c} pack={pack} walkMin={c.stage === "second" ? 0 : data?.walkMin ?? commute.walkMin}
+                now={now} stale={stale} fastest={false} weather={weather} places={places}
+                open={openKey === key} onToggle={() => setOpenKey(openKey === key ? "" : key)}
+                onChoose={() => updateJourney(c.stage === "second"
+                  ? { ...journey, chosen: c, stage: "second", second: c.second!, first: undefined, originFix: undefined }
+                  : { ...journey, chosen: c, stage: "first", first: c.first, originFix: undefined })} />
+            );
+          })}
+        </ul>
+        <p className="section-label">Next departures</p>
+      </>}
       {!data && !error && <p className="notice">Working out your routes…</p>}
       {data && options.length === 0 && <p className="notice">No route found for these stops and timetables. Change the stops, or refresh for new times.</p>}
       <ul>
@@ -258,6 +326,7 @@ export function CommuteView({ shuttles, onOpenSettings }: { shuttles: Shuttle[];
               stale={stale}
               fastest={i === 0}
               chosen={isChosen(journey, c)}
+              weather={weather}
               onChoose={() => updateJourney({ ...journey, chosen: c, first: c.first, originFix: undefined })}
               places={places}
               open={open}

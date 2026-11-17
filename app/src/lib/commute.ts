@@ -3,6 +3,7 @@
 // make after walking, using live bus delays where known.
 
 import { type BusDeparture, type BusPack, busDepartures, groupStops, withLiveDelays } from "./buses";
+import { type BusBands, chanceCatch, type DelayDist, delayDist, range80 } from "./busOdds";
 import { load, save } from "./storage";
 import { type Shuttle, shuttleTrips } from "./shuttles";
 
@@ -26,6 +27,8 @@ export interface LegTrip {
   canceled: boolean;
   busInfo?: BusDeparture;
   userEstimate?: boolean;
+  departRange?: [number, number]; // ~80% of buses reach the boarding stop in this window
+  arriveRange?: [number, number];
 }
 
 export interface Connection {
@@ -37,6 +40,8 @@ export interface Connection {
   overnight?: boolean;
   longWait?: boolean;
   positionUncertain?: boolean;
+  underway?: boolean; // already departed: you may be on it
+  catchChance?: number; // P(you make the change), from measured bus delay spreads
 }
 
 export type JourneyStage = "start" | "first" | "transfer" | "secondStop" | "second";
@@ -54,6 +59,7 @@ export function connectionKey(c: Connection): string {
 
 export interface CommutePlan {
   connections: Connection[];
+  underway: Connection[]; // trips that have left and not yet arrived
   warnings: string[];
   walkMin: number;
   feedAt: number | null;
@@ -86,7 +92,7 @@ function legTrips(
   if (leg.kind === "shuttle") {
     const s = shuttles.find((x) => x.id === leg.id);
     if (!s) return [];
-    return shuttleTrips(s, leg.from, leg.to, now, afterS).map((t) => ({
+    return shuttleTrips(s, leg.from, leg.to, now, afterS - UNDERWAY_LOOKBACK_S).map((t) => ({
       kind: "shuttle",
       label: s.name,
       departS: t.departS,
@@ -104,6 +110,9 @@ function legTrips(
   return busDepartures(pack, from, to, now, horizonMin, 120).map(fromBus);
 }
 
+/** Trips are kept this long after departure so a bus you are on stays in the app. */
+const UNDERWAY_LOOKBACK_S = 3 * 3600;
+
 function tripKey(t: LegTrip): string {
   return t.busInfo ? `${t.busInfo.tripId}@${t.busInfo.serviceDate}` : `${t.label}@${t.scheduledDepartS}`;
 }
@@ -116,13 +125,14 @@ export async function planCommute(
   now: Date,
   count = 4,
   context: JourneyContext = { stage: "start" },
+  bands?: BusBands,
 ): Promise<CommutePlan> {
   const nowS = (now.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 1000;
   const requestedWalk = context.walkMinOverride ?? commute.walkMin;
   const walkMin = context.stage === "secondStop" || context.stage === "second" ? 0 : Number.isFinite(requestedWalk) ? Math.min(60, Math.max(0, requestedWalk)) : 5;
   const warnings: string[] = [];
   if (context.stage === "first" && !context.first) {
-    return { connections: [], warnings: ["Waiting for phone location to update the remaining journey."], walkMin, feedAt: null, fetchedAt: Date.now() };
+    return { connections: [], underway: [], warnings: ["Waiting for phone location to update the remaining journey."], walkMin, feedAt: null, fetchedAt: Date.now() };
   }
   let firstLegs = legTrips(commute.legs[0], pack, shuttles, now, nowS, 720);
   if (context.stage === "first" && context.first) firstLegs = [context.first];
@@ -142,12 +152,14 @@ export async function planCommute(
     warnings.push("Live bus times unavailable. Routes use the timetable. Refresh before you leave.");
   }
   let i = 0;
-  const [firsts, seconds] = legs.map((trips, legIndex) => trips.map((t) => t.busInfo ? fromBus(updated[i++]) : t)
-    .filter((t) => !t.canceled && !t.busInfo?.skipped && (t.departS >= nowS
+  const [allFirsts, allSeconds] = legs.map((trips) => trips.map((t) => t.busInfo ? fromBus(updated[i++]) : t)
+    .map((t) => withRanges(t, bands, nowS)).filter((t) => !t.canceled && !t.busInfo?.skipped));
+  const [firsts, seconds] = [allFirsts, allSeconds].map((trips, legIndex) => trips
+    .filter((t) => (t.departS >= nowS
       || (legIndex === 0 && context.stage === "first" && context.first && tripKey(t) === tripKey(context.first))
       || (legIndex === 1 && context.stage === "second" && context.second && tripKey(t) === tripKey(context.second))))
     .sort((a, b) => a.departS - b.departS));
-  const all = firsts.map((first) => {
+  const connect = (first: LegTrip): Connection => {
     const ready = Math.max(nowS, first.arriveS) + walkMin * 60;
     // A later express bus can arrive before an earlier slow service.
     const second = seconds.filter((t) => context.stage === "second" || t.departS >= ready)
@@ -162,8 +174,20 @@ export async function planCommute(
       overnight: !!second && second.departS >= 86400 && first.arriveS < 86400,
       longWait: !!second && second.departS - ready > 120 * 60,
       positionUncertain: context.stage === "first" && first.arriveS < nowS,
+      catchChance: second && bands ? catchOdds(first, second, walkMin, bands, nowS) : undefined,
     };
-  });
+  };
+  const all = firsts.map(connect);
+  // Departed but not arrived: the user may be on board without having tapped Follow.
+  const moving = (t: LegTrip) => t.kind !== "walk" && t.departS < nowS && t.arriveS > nowS - 60;
+  const underway = context.stage === "start" || context.stage === "transfer" || context.stage === "secondStop" ? [
+    ...(context.stage === "start" ? allFirsts.filter(moving).map((t): Connection => ({ ...connect(t), stage: "first", underway: true })) : []),
+    ...allSeconds.filter(moving).map((second): Connection => ({
+      first: { kind: "walk", label: "Your current position", departS: nowS, arriveS: nowS,
+        scheduledDepartS: nowS, scheduledArriveS: nowS, live: false, canceled: false },
+      second, spareMin: 0, stage: "second", underway: true,
+    })),
+  ].sort((a, b) => b.first.departS - a.first.departS).slice(0, 3) : [];
   // Several first legs often feed the same second leg (e.g. three shuttles, one bus home).
   // Only the latest of them is worth showing: same arrival, least waiting around.
   const best = new Map<string, Connection>();
@@ -180,8 +204,34 @@ export async function planCommute(
     connections: results.sort((a, b) =>
       (a.second?.arriveS ?? Infinity) - (b.second?.arriveS ?? Infinity) || a.first.departS - b.first.departS,
     ).slice(0, count),
-    warnings, walkMin, feedAt: feedTimes.length ? Math.min(...feedTimes) : null, fetchedAt: Date.now(),
+    underway, warnings, walkMin, feedAt: feedTimes.length ? Math.min(...feedTimes) : null, fetchedAt: Date.now(),
   };
+}
+
+const busDist = (t: LegTrip, end: "departure" | "arrival", bands: BusBands, nowS: number): DelayDist | null => {
+  if (t.kind !== "bus" || !t.busInfo) return null;
+  const d = t.busInfo;
+  const schedS = end === "departure" ? d.departS : d.arriveS;
+  const update = end === "departure" ? d.departureUpdate : d.arrivalUpdate;
+  return delayDist(bands, { route: d.route, leadMin: Math.max(0, (schedS - nowS) / 60), liveDelayMin: update ? update.delayS / 60 : null });
+};
+
+/** 80% windows for when the bus reaches each stop, from measured error of TFI estimates. */
+function withRanges(t: LegTrip, bands: BusBands | undefined, nowS: number): LegTrip {
+  if (!bands || t.kind !== "bus" || !t.busInfo) return t;
+  const window = (end: "departure" | "arrival", schedS: number): [number, number] => {
+    const [lo, hi] = range80(busDist(t, end, bands, nowS)!);
+    return [schedS + lo * 60, schedS + hi * 60];
+  };
+  return { ...t, departRange: window("departure", t.scheduledDepartS), arriveRange: window("arrival", t.scheduledArriveS) };
+}
+
+function catchOdds(first: LegTrip, second: LegTrip, walkMin: number, bands: BusBands, nowS: number): number | undefined {
+  const a = first.kind === "walk" || first.arriveS <= nowS - 60 ? null : busDist(first, "arrival", bands, nowS);
+  const b = busDist(second, "departure", bands, nowS);
+  if (!a && !b) return undefined; // timetable and shuttle legs: no spread to report
+  const arriveS = a ? first.scheduledArriveS : Math.max(nowS, first.arriveS);
+  return chanceCatch(a, arriveS, walkMin * 60, b, b ? second.scheduledDepartS : second.departS);
 }
 
 export async function connections(commute: Commute, pack: BusPack, shuttles: Shuttle[], now: Date, count = 4): Promise<Connection[]> {

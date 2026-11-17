@@ -176,6 +176,9 @@ def main(argv: list[str] | None = None) -> None:
     tr.add_argument("--tracking-uri", default="sqlite:///mlflow.db")
     tr.add_argument("--report", type=Path, default=Path("reports/bus_model_results.md"))
     tr.add_argument("--epochs", type=int, default=8)
+    bd = sub.add_parser("bands", help="export bus arrival-odds quantile bands for the app")
+    bd.add_argument("--data", type=Path, default=Path("data"))
+    bd.add_argument("--out", type=Path, default=Path("app/src/model/bus-bands.json"))
     args = parser.parse_args(argv)
 
     if args.command == "history":
@@ -183,6 +186,12 @@ def main(argv: list[str] | None = None) -> None:
         from commuteer.collector.storage import LocalSink
 
         print(build_day(LocalSink(args.data), args.date, args.gtfs))
+        return
+    if args.command == "bands":
+        from commuteer.buses.bands import export_bands
+
+        b = export_bands(args.data, args.out)
+        print(f"{b['rows']} rows over {b['days']} days -> {args.out}")
         return
     if args.command == "train":
         from commuteer.buses.train import train_buses
