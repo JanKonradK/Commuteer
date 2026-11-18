@@ -54,6 +54,7 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
+    testImplementation "org.json:json:20240303" // real org.json for JourneyMathTest (android.jar only has stubs)
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')

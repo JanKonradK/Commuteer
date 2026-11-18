@@ -5,6 +5,8 @@ import { Icon } from "./icons";
 import { clock } from "./lib/predict";
 
 export const REFRESH_MS = 60_000;
+/** Live bus data refreshes every 30 s on the server, so buses near you check that often. */
+export const LIVE_REFRESH_MS = 30_000;
 
 const visible = () => document.visibilityState !== "hidden";
 
@@ -188,7 +190,8 @@ export function WrapSelect(props: { label: string; value: string; options: Optio
 export function RouteSelect(props: { label: "From" | "To"; value: string; options: Options; onChange: (value: string) => void }) {
   return (
     <label className="route-field">
-      <span className="route-label">{props.label}</span>
+      {/* Left of the swap arrows is "from", right is "to": the label is for screen readers. */}
+      <span className="route-label sr-only">{props.label}</span>
       <WrapSelect {...props} />
     </label>
   );
@@ -218,7 +221,7 @@ export function secondsSinceMidnight(d = new Date()): number {
   return (d.getHours() * 60 + d.getMinutes()) * 60 + d.getSeconds();
 }
 
-/** "Leave in 12 min  09:10 ——→ 09:55  Arrive" */
+/** "in 12 min / 09:10 ——→ 09:55": the countdown is the only label it needs. */
 export function Times(props: {
   departS: number;
   arriveS: number;
@@ -227,31 +230,24 @@ export function Times(props: {
   nowS?: number; // seconds since midnight; shows "in 12 min" next to Leave
   departLabel?: string;
   arriveLabel?: string;
+  live?: boolean; // times from the live feed get a small green dot
 }) {
   return (
-    <div className="times">
+    <div className={`times${props.live ? " live" : ""}`}>
       <div>
-        <small>
-          {props.departLabel ?? "Leave"}
-          {props.nowS !== undefined && <span className="countdown"> {countdown(props.departS - props.nowS)}</span>}
-        </small>
+        {(props.departLabel || props.nowS !== undefined) && <small>
+          {props.departLabel}
+          {props.nowS !== undefined && <span className={`countdown${props.departS - props.nowS <= 10 * 60 ? " urgent" : ""}`}>{countdown(props.departS - props.nowS)}</span>}
+        </small>}
         <Time s={props.departS} scheduledS={props.scheduledDepartS} className="big" />
       </div>
       <span className="track" aria-hidden />
       <div className="arr">
-        <small>{props.arriveLabel ?? "Arrive"}</small>
+        {props.arriveLabel && <small>{props.arriveLabel}</small>}
         <Time s={props.arriveS} scheduledS={props.scheduledArriveS} className="big" />
       </div>
     </div>
   );
-}
-
-/** "On time" / "3 min late" / "2 min early" / "Timetable only". */
-export function delayText(delayMin: number | null): string {
-  if (delayMin === null) return "Timetable only";
-  const m = Math.round(delayMin);
-  if (m === 0) return "On time";
-  return m > 0 ? `${m} min late` : `${-m} min early`;
 }
 
 /** Colour for a live delay in minutes (null = no live data). */
@@ -260,6 +256,6 @@ export function delayTone(delayMin: number | null): "good" | "ok" | "bad" | "non
   return delayMin <= 1 ? "good" : delayMin <= 5 ? "ok" : "bad";
 }
 
-export function Chip(props: { tone: "good" | "ok" | "bad" | "none"; children: React.ReactNode }) {
+export function Chip(props: { tone: "good" | "ok" | "bad" | "none" | "accent"; children: React.ReactNode }) {
   return <span className={`chip ${props.tone}`}>{props.children}</span>;
 }

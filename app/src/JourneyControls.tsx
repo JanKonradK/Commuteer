@@ -9,7 +9,7 @@ import type { Shuttle } from "./lib/shuttles";
 export const LOCATION_FOLLOWING_MS = 20_000;
 export const LOCATION_IDLE_MS = 120_000;
 
-/** One compact line saying how the phone's location is being used. */
+/** Follows the phone's location; shows a line only when location is unavailable. */
 export function JourneyControls(props: {
   commute: Commute; pack: BusPack; shuttles: Shuttle[];
   state: JourneyState; places: [string, string, string, string]; onChange: (state: JourneyState) => void;
@@ -60,19 +60,13 @@ export function JourneyControls(props: {
     if (JSON.stringify(next) !== JSON.stringify(state)) props.onChange(next);
   }, [fix, state, commute, props.pack, props.onChange]);
 
-  const text = error
-    ? error
-    : !fix
-      ? "Finding your location…"
-      : fix.accuracy > 100
-        ? "Location approximate"
-        : `Using phone location · ±${Math.round(fix.accuracy)} m`;
+  // Silent while location works; only a problem is worth a line.
+  if (!error) return null;
   return (
-    <div className={`location ${error ? "off" : ""}`} role="status"
-      title="Walking times from your location are estimates. Location updates while Commute is open.">
+    <div className="location off" role="status">
       <Icon name="pin" size={16} />
-      <span className="location-text">{text}</span>
-      {error && <button className="link" onClick={() => setRetry((v) => v + 1)}>Retry</button>}
+      <span className="location-text">Location off</span>
+      <button className="link" onClick={() => setRetry((v) => v + 1)}>Retry</button>
     </div>
   );
 }

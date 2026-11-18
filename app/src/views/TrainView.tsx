@@ -5,7 +5,7 @@ import { DelayModel, type ModelJson } from "../lib/model";
 import { clock, expectedTimeS, type Prediction } from "../lib/predict";
 import { load, save } from "../lib/storage";
 import modelJson from "../model/delay-model.json";
-import { Chip, delayText, delayTone, REFRESH_MS, RefreshButton, RouteBar, RouteSelect, Times, UpdatedText, useAutoRefresh, secondsSinceMidnight } from "../ui";
+import { REFRESH_MS, RefreshButton, RouteBar, RouteSelect, Times, UpdatedText, useAutoRefresh, secondsSinceMidnight } from "../ui";
 
 const FALLBACK_STATIONS: Station[] = [
   { code: "ATLNE", name: "Athlone", codes: ["ATLNE"] },
@@ -56,25 +56,17 @@ function TrainCard({ p, legend, stale }: { p: Prediction; legend: boolean; stale
         arriveS={p.liveArrivalS ?? p.scheduledArrivalS + mid * 60}
         scheduledArriveS={p.scheduledArrivalS}
         nowS={stale ? undefined : secondsSinceMidnight()}
-        departLabel={stale ? "Leave · last update" : hasLiveInfo(p.train) ? "Leave · live" : "Leave · timetable"}
-        arriveLabel={stale ? "Arrive · last update" : p.liveArrivalS != null ? "Arrive · live" : "Arrive · model estimate"}
+        live={!stale && hasLiveInfo(p.train)}
       />
       <div className="chips">
-        <Chip tone={stale || !hasLiveInfo(p.train) ? "none" : "good"}>{stale ? "Last known times" : hasLiveInfo(p.train) ? "Live · Irish Rail" : "Timetable only"}</Chip>
-        {hasLiveInfo(p.train) && <Chip tone={stale ? "none" : delayTone(p.train.lateMin)}>{delayText(p.train.lateMin)}</Chip>}
-        <Chip tone={tone(p)}>{chance}% chance on time</Chip>
+        <span className="route">{p.train.code}</span>
+        <span className={`chip ${tone(p)}`} title="Chance it arrives on time">{chance}%</span>
       </div>
-      {p.train.lastLocation && <div className="muted small">{p.train.lastLocation}</div>}
+      {p.train.lastLocation && !stale && <p className="live-line"><span className="live-dot" aria-hidden /><span>{p.train.lastLocation}</span></p>}
       <ArrivalWindow p={p} />
       <div className="window-labels">
-        <span>
-          Model estimate {clock(p.scheduledArrivalS + lo * 60)}–{clock(p.scheduledArrivalS + hi * 60)}
-        </span>
-        {legend && (
-          <span className="legend">
-            <i className="tick-key" /> timetable
-          </span>
-        )}
+        <span>{clock(p.scheduledArrivalS + lo * 60)}–{clock(p.scheduledArrivalS + hi * 60)}</span>
+        {legend && <span className="legend"><i className="tick-key" /> timetable</span>}
       </div>
     </li>
   );
@@ -128,15 +120,12 @@ export function TrainView() {
         onSwap={() => setRoute({ from: route.to, to: route.from })}
         side={<RefreshButton loading={loading} onRefresh={refresh} />}
       />
-      <div className="meta">
-        <span>Direct trains · next 90 min</span>
-        <UpdatedText at={at ?? result?.fetchedAt ?? null} loading={loading} stale={stale} />
-      </div>
+      {stale && <p className="route-warning" role="status"><UpdatedText at={at ?? result?.fetchedAt ?? null} loading={false} stale /></p>}
       {error && !result && <p className="notice">Couldn’t load trains: {error}</p>}
-      {result?.arrivalBoardUnavailable && <p className="muted small">Live arrivals unavailable. Showing model estimates where needed.</p>}
+      {result?.arrivalBoardUnavailable && <p className="route-warning">Live arrivals unavailable</p>}
       {result &&
         (result.predictions.length === 0 ? (
-          <p className="notice">No direct trains in the next 90 minutes.</p>
+          <p className="notice">No direct trains in the next 90 min</p>
         ) : (
           <ul>
             {result.predictions.map((p, i) => (

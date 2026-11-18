@@ -20,8 +20,8 @@ No public source keeps a record of how late Irish trains and buses actually run,
 |---|---|---|---|
 | Train positions | Irish Rail realtime API (no key) | every 30 s | every running train, where it is, how late |
 | Train movements | Irish Rail realtime API | nightly | scheduled **and actual** times at every stop: exact delay data |
-| Bus trip updates | Transport for Ireland GTFS-Realtime (free key) | every 60 s | predicted delays for Bus Éireann and other operators |
-| Vehicle positions | Transport for Ireland GTFS-Realtime | every 60 s | where every bus is |
+| Bus trip updates | Transport for Ireland GTFS-Realtime (free key) | every 30 s | predicted delays for Bus Éireann and other operators |
+| Vehicle positions | Transport for Ireland GTFS-Realtime | every 30 s | where every bus is |
 | Timetable | Transport for Ireland GTFS (national) | daily, kept when it changes | the schedule each delay is measured against |
 
 ```

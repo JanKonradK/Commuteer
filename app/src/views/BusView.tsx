@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { BusDetails } from "../BusDetails";
 import {
   type BusDeparture,
   type BusPack,
@@ -10,38 +9,34 @@ import {
   packExpired,
   withLiveDelays,
   upcomingBuses,
-  busTimeSource,
 } from "../lib/buses";
-import { Chip, delayText, delayTone, RefreshButton, RouteBar, RouteSelect, Times, UpdatedText, useAutoRefresh, secondsSinceMidnight, useNow } from "../ui";
+import { LiveLine } from "../LiveBus";
+import { Chip, delayTone, LIVE_REFRESH_MS, RefreshButton, RouteBar, RouteSelect, Times, UpdatedText, useAutoRefresh, secondsSinceMidnight, useNow } from "../ui";
 
+/** Times (live ones get a green dot, the timetable time struck through), route and where it goes. */
 function BusCard({ d, pack }: { d: BusDeparture; pack: BusPack }) {
   const now = useNow();
   const stale = !!d.feedAt && now - d.feedAt > 300_000;
-  const live = d.departDelayS !== null || d.arriveDelayS !== null;
+  const live = !stale && (d.departDelayS !== null || d.arriveDelayS !== null);
   const depDelay = d.departDelayS ?? 0;
   const arrDelay = d.arriveDelayS ?? d.departDelayS ?? 0;
-  const delayMin = live ? arrDelay / 60 : null;
-  const delayLabel = live && Math.round(arrDelay / 60) === 0 ? "No delay reported" : delayText(delayMin);
+  const gone = d.canceled || d.skipped;
   return (
-    <li className={`card ${d.canceled || d.skipped ? "bad" : delayTone(delayMin)}`}>
+    <li className={`card ${gone ? "bad" : delayTone(live ? arrDelay / 60 : null)}`}>
       <Times
         departS={d.departS + depDelay}
         arriveS={d.arriveS + arrDelay}
         scheduledDepartS={d.departS}
         scheduledArriveS={d.arriveS}
-        nowS={d.canceled || d.skipped || stale ? undefined : secondsSinceMidnight(new Date(now))}
+        nowS={gone || stale ? undefined : secondsSinceMidnight(new Date(now))}
+        live={live}
       />
       <div className="chips">
         <span className="route">{d.route}</span>
-        <span className="muted small">to {d.headsign}</span>
-        <Chip tone={d.canceled || d.skipped ? "bad" : delayTone(delayMin)}>
-          {d.canceled ? "Cancelled" : d.skipped ? "Stop not served" : stale ? "Feed out of date" : live ? `${busTimeSource(d.arrivalUpdate ?? d.departureUpdate)} · ${delayLabel}` : "Timetable only"}
-        </Chip>
+        <span className="muted">{d.headsign}</span>
+        {gone && <Chip tone="bad">{d.canceled ? "Cancelled" : "Stop not served"}</Chip>}
       </div>
-      {(d.departureUpdate?.source === "carried" || d.arrivalUpdate?.source === "carried") && (
-        <p className="muted small bus-estimate-note">Estimate from an earlier stop · may differ from the stop display</p>
-      )}
-      <BusDetails d={d} pack={pack} />
+      {!gone && <LiveLine pack={pack} d={d} target="board" />}
     </li>
   );
 }
@@ -70,7 +65,7 @@ export function BusView() {
         warning: e instanceof Error ? `${e.message} · showing timetable` : "Live buses unavailable · showing timetable",
       };
     }
-  }, [route, pack]);
+  }, [route, pack], LIVE_REFRESH_MS);
 
   if (!pack) return <p className="notice">Loading timetable…</p>;
   const stopOptions = groups.map((g) => [g.key, g.name] as const);
@@ -87,15 +82,11 @@ export function BusView() {
         onSwap={() => setRoute({ from: route.to, to: route.from })}
         side={<RefreshButton loading={loading} onRefresh={refresh} />}
       />
-      <div className="meta">
-        <span>Direct buses · next 12 h</span>
-        <UpdatedText at={at} loading={loading} stale={!!error} />
-      </div>
-      {data?.warning && <p className="muted small" role="status">{data.warning}</p>}
-      {packExpired(pack, new Date()) && <p className="route-warning">Bus timetable out of date. Update the app for new times.</p>}
+      {(error || data?.warning) && <p className="route-warning" role="status"><UpdatedText at={at} loading={false} stale /></p>}
+      {packExpired(pack, new Date()) && <p className="route-warning">Bus timetable out of date</p>}
       {data &&
         (data.departures.length === 0 ? (
-          <p className="notice">No direct buses in the next 12 hours.</p>
+          <p className="notice">No direct buses in the next 12 h</p>
         ) : (
           <ul>
             {data.departures.map((d) => (

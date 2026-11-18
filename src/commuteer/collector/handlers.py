@@ -14,7 +14,12 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from commuteer.buses.gtfsrt import TripDelay, decode_trip_updates
+from commuteer.buses.gtfsrt import (
+    TripDelay,
+    VehicleFix,
+    decode_trip_updates,
+    decode_vehicle_positions,
+)
 from commuteer.collector import gtfs_static, irish_rail
 from commuteer.collector.config import build_sources
 from commuteer.collector.http import fetch
@@ -103,8 +108,9 @@ def gtfs_snapshot(event: dict[str, Any], context: Any) -> dict[str, Any]:
 # --- Live bus delays (Lambda function URL) -----------------------------------------------
 
 MAX_TRIPS_PER_REQUEST = 50
-FEED_CACHE_S = 20  # the collector refreshes the feed every 60 s
+FEED_CACHE_S = 10  # the collector refreshes the feeds every 30 s
 _feed_cache: dict[str, Any] = {}
+_vehicle_cache: dict[str, Any] = {}
 
 
 def _latest_trip_updates(
@@ -118,6 +124,36 @@ def _latest_trip_updates(
     feed = decode_trip_updates(raw)
     _feed_cache.update(at=clock(), feed=feed)
     return feed
+
+
+def _latest_vehicles(
+    clock: Callable[[], float] = time.monotonic,
+) -> dict[str, VehicleFix]:
+    """Newest bus positions by trip; an empty dict if the snapshot is missing or unreadable."""
+    if _vehicle_cache and clock() - _vehicle_cache["at"] < FEED_CACHE_S:
+        cached: dict[str, VehicleFix] = _vehicle_cache["fixes"]
+        return cached
+    try:
+        raw = gzip.decompress(_sink().get(latest_key("nta_vehicles", "pb")))
+        _, fixes = decode_vehicle_positions(raw)
+    except Exception as e:  # positions are a bonus: delays still work without them
+        _emit("bus_vehicles_error", error=str(e))
+        fixes = {}
+    _vehicle_cache.update(at=clock(), fixes=fixes)
+    return fixes
+
+
+def _vehicle_json(v: VehicleFix) -> dict[str, Any]:
+    bearing = None if v.bearing is None else round(v.bearing)
+    return {
+        "date": v.start_date,
+        "lat": round(v.lat, 5),
+        "lon": round(v.lon, 5),
+        "t": v.t,
+        "seq": v.stop_sequence,
+        "status": v.status,
+        "bearing": bearing,
+    }
 
 
 def _response(status: int, body: dict[str, Any], max_age: int = 0) -> dict[str, Any]:
@@ -159,7 +195,12 @@ def bus_live(event: dict[str, Any], context: Any) -> dict[str, Any]:
         for t in wanted
         if t in trips
     }
-    return _response(200, {"feed_timestamp": timestamp, "trips": found}, max_age=15)
+    vehicles = _latest_vehicles()
+    # Where each requested bus is now, for "3 stops away" and the map.
+    positions = {t: _vehicle_json(vehicles[t]) for t in wanted if t in vehicles}
+    return _response(
+        200, {"feed_timestamp": timestamp, "trips": found, "vehicles": positions}, max_age=10
+    )
 
 
 # --- Nightly bus history (actual stop times from GPS + scored live predictions) -----------

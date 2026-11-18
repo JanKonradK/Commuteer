@@ -111,3 +111,15 @@ def test_build_pack_keeps_regional_bus_journeys(tmp_path: Path) -> None:
     assert pack["routes"][route][1] == "466" and headsign == "Cavan"
     assert pack["services"][service] == "1111100"
     assert calls == [[0, 1, 450, 450], [1, 4, 476, 476]]
+
+
+def test_vehicle_positions_match_history_decoder() -> None:
+    from commuteer.buses.gtfsrt import decode_vehicle_positions
+    from commuteer.buses.history import decode_vehicles
+
+    raw = gzip.decompress((Path(__file__).parent / "fixtures" / "nta_vehicles.pb.gz").read_bytes())
+    _, fixes = decode_vehicle_positions(raw)
+    old = {f.trip_id: f for f in decode_vehicles(raw)}
+    assert fixes and set(fixes) == set(old)
+    some = next(iter(fixes.values()))
+    assert (some.lat, some.lon) == (old[some.trip_id].lat, old[some.trip_id].lon)

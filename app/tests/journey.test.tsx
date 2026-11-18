@@ -80,8 +80,8 @@ it("does not offer an already-departed shuttle to someone still at the start", a
   const html = renderToStaticMarkup(<ConnectionCard c={c} walkMin={5} places={["Yard", "Pickup", "Town", "Station"]}
     now={now.getTime()} pack={pack} stale={false} fastest open onToggle={() => {}} />);
   expect(html).toContain('card bad');
-  expect(html).toContain("Overnight wait");
-  expect(html).toContain("Arrive · tomorrow");
+  expect(html).toContain('chip bad">Tomorrow');
+  expect(html).toContain("<small>Tomorrow</small>");
   expect(html).not.toContain("Earliest arrival");
   expect(html).not.toContain("567 min to spare");
 });

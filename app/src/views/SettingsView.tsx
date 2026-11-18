@@ -3,7 +3,6 @@ import { type BusPack, groupStops, loadPack } from "../lib/buses";
 import { type Commute, commuteStore, type Leg } from "../lib/commute";
 import { type Shuttle, stopsOf } from "../lib/shuttles";
 import { Icon } from "../icons";
-import { LOCATION_FOLLOWING_MS, LOCATION_IDLE_MS } from "../JourneyControls";
 import { WrapSelect } from "../ui";
 import { type useUpdates, VersionLine } from "../UpdateBanner";
 import { blankShuttle, daysText, ShuttleEditor } from "./ShuttleView";
@@ -19,7 +18,7 @@ function LegEditor(props: { title: string; leg: Leg; pack: BusPack; shuttles: Sh
       : (shuttle ? stopsOf(shuttle) : []).map((s) => [s, s] as const);
   const pick = (key: "from" | "to") => (
     <label className="field">
-      <span>{key === "from" ? "From" : "To"}</span>
+      <span className="sr-only">{key === "from" ? "From" : "To"}</span>
       <WrapSelect label={`${props.title} ${key}`} value={leg[key]} options={options}
         onChange={(v) => props.onChange({ ...leg, [key]: v })} />
     </label>
@@ -28,7 +27,7 @@ function LegEditor(props: { title: string; leg: Leg; pack: BusPack; shuttles: Sh
     <fieldset className="leg-editor">
       <legend>{props.title}</legend>
       <label className="field wide">
-        <span>Travel by</span>
+        <span className="sr-only">Travel by</span>
         <select
           aria-label={`${props.title} mode`}
           value={leg.kind === "bus" ? "bus" : leg.id}
@@ -95,30 +94,29 @@ export function SettingsView(props: {
   const open = (s: Shuttle) => { setEditing(s); window.scrollTo(0, 0); };
   return (
     <section>
-      <h1 className="page-title">Settings</h1>
+      <h1 className="sr-only">Settings</h1>
 
-      <h2 className="group-title">Your commute</h2>
+      <h2 className="sr-only">Your commute</h2>
       <div className="group pad">
         {pack ? (
           <>
             <LegEditor title="First leg" leg={commute.legs[0]} pack={pack} shuttles={list}
               onChange={(l) => update({ ...commute, legs: [l, commute.legs[1]] })} />
-            <label className="inline">
-              Walk between them
+            <label className="inline walk-field" title="Walk between the two legs">
+              <Icon name="walk" size={18} />
               <input type="number" min={0} max={60} aria-label="Walking minutes" value={commute.walkMin}
                 onChange={(e) => update({ ...commute, walkMin: Number(e.target.value) || 0 })} />
               min
             </label>
             <LegEditor title="Second leg" leg={commute.legs[1]} pack={pack} shuttles={list}
               onChange={(l) => update({ ...commute, legs: [commute.legs[0], l] })} />
-            <p className="muted small hint">Saved as you go. Use the swap button on the Commute screen for the trip home.</p>
           </>
         ) : (
           <p className="muted">Loading bus stops…</p>
         )}
       </div>
 
-      <h2 className="group-title">Shuttle timetables</h2>
+      <h2 className="group-title">Shuttles</h2>
       <ul className="group rows">
         {list.map((s) => (
           <li key={s.id}>
@@ -139,17 +137,7 @@ export function SettingsView(props: {
         </li>
       </ul>
 
-      <h2 className="group-title">Location and battery</h2>
-      <div className="group pad text">
-        <p>Your phone location tells Commuteer which stop you’ve reached, so it can update the rest of the journey.</p>
-        <p className="muted small">
-          Checked every {LOCATION_IDLE_MS / 60_000} min while Commute is open, every {LOCATION_FOLLOWING_MS / 1000} s
-          while you follow a journey, and never while the app is in the background.
-        </p>
-      </div>
-
-      <h2 className="group-title">About</h2>
-      <div className="group pad">
+      <div className="group pad about">
         <VersionLine updates={props.updates} />
       </div>
     </section>

@@ -99,9 +99,8 @@ it("identifies a lost final connection without claiming arrival at work", async 
   const html = renderToStaticMarkup(<ConnectionCard c={plan.connections[0]} pack={pack}
     places={["Start", "Transfer", "Pickup", "Work"]} walkMin={5} now={now.getTime()}
     stale={false} fastest open onToggle={() => {}} />);
-  expect(html).toContain("Transfer only");
-  expect(html).toContain("No later connection");
-  expect(html).not.toContain("min total");
+  expect(html).toContain("No connection");
+  expect(html).toContain("card bad");
 });
 
 it("shows live leg times, the walk, wait, and recalculated journey duration", async () => {
@@ -110,10 +109,9 @@ it("shows live leg times, the walk, wait, and recalculated journey duration", as
   const html = renderToStaticMarkup(<ConnectionCard c={plan.connections[0]} pack={pack}
     places={["Start", "Transfer", "Pickup", "Work"]} walkMin={5} now={now.getTime()}
     stale={false} fastest open onToggle={() => {}} />);
-  expect(html).toContain("75 min total");
-  expect(html).toContain("22 min to spare");
-  expect(html).toContain("ready at 09:53");
-  expect(html).toContain("Connection changed after live updates");
-  expect(html).toContain("Shuttle timetable");
-  expect(html).toContain("Stop update");
+  expect(html).toContain(">10:25<"); // arrival
+  expect(html).toContain("22 min spare");
+  expect(html).toContain("5 min"); // the walk
+  expect(html).toContain("Changed");
+  expect(html).toContain('stop-time live'); // the live bus time is marked; the shuttle is not
 });

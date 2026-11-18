@@ -7,7 +7,7 @@ locals {
       timeout     = 75
       memory      = 256
       ephemeral   = 512
-      description = "Polls realtime feeds every 30-60 s within a 1-minute window"
+      description = "Polls realtime feeds every 30 s within a 1-minute window"
     }
     rail_movements = {
       handler     = "commuteer.collector.handlers.rail_movements"

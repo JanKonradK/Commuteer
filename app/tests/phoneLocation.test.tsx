@@ -28,7 +28,7 @@ it("gets the phone location on opening without a location picker or confirmation
   const change = await mount();
   expect(locate).toHaveBeenCalledTimes(1);
   expect(change).toHaveBeenCalledWith(expect.objectContaining({ stage: "secondStop" }));
-  expect(host.textContent).toContain("Using phone location");
+  expect(host.textContent).toBe(""); // working location needs no words
   expect(host.querySelector("select")).toBeNull();
   expect(host.textContent).not.toContain("Where are you");
   expect(host.textContent).not.toContain("Confirm your stop");
@@ -73,6 +73,6 @@ it("does not replace a denied location with questions about the user's position"
   vi.mocked(locate).mockRejectedValue(new Error("Permission denied"));
   const change = await mount();
   expect(change).not.toHaveBeenCalled();
-  expect(host.textContent).toContain("Phone location unavailable");
+  expect(host.textContent).toContain("Location off");
   expect(host.querySelector("select")).toBeNull();
 });

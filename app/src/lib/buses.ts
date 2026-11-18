@@ -39,6 +39,15 @@ export interface BusDeparture {
   feedAt?: number; // feed timestamp, milliseconds since the epoch
   departureUpdate?: BusTimeUpdate | null;
   arrivalUpdate?: BusTimeUpdate | null;
+  vehicle?: BusVehicle | null; // the bus's last GPS position, when it is running
+}
+
+/** A GPS fix from the TFI vehicle feed. */
+export interface BusVehicle {
+  lat: number;
+  lon: number;
+  t: number; // ms since the epoch (GPS time)
+  bearing: number | null;
 }
 
 export interface BusTimeUpdate {
@@ -46,10 +55,6 @@ export interface BusTimeUpdate {
   source: "stop" | "carried";
   stopId: string;
   sequence: number;
-}
-
-export function busTimeSource(update: BusTimeUpdate | null | undefined): string {
-  return update ? update.source === "stop" ? "Stop update" : "Estimated" : "Timetable";
 }
 
 const KM_PER_DEG = 111.2;
@@ -138,6 +143,8 @@ export function busDepartures(
   return out.sort((a, b) => a.departS - b.departS);
 }
 
+interface LiveVehicle { date: string; lat: number; lon: number; t: number; bearing: number | null }
+
 interface LiveTrip {
   date: string;
   canceled: boolean;
@@ -170,22 +177,29 @@ export async function withLiveDelays(deps: BusDeparture[], timeoutMs = 8000): Pr
   try {
     const trips: Record<string, LiveTrip> = {};
     const timestamps: Record<string, number> = {};
+    const vehicles: Record<string, LiveVehicle> = {};
     for (let i = 0; i < ids.length; i += 50) {
       const res = await fetch(`${BUS_LIVE_URL}?trips=${ids.slice(i, i + 50).map(encodeURIComponent).join(",")}`, {
         signal: controller.signal,
       });
       if (!res.ok) throw new Error(`live buses: HTTP ${res.status}`);
-      const body = (await res.json()) as { feed_timestamp: number; trips: Record<string, LiveTrip> };
+      const body = (await res.json()) as {
+        feed_timestamp: number; trips: Record<string, LiveTrip>; vehicles?: Record<string, LiveVehicle>;
+      };
       const age = Date.now() / 1000 - body.feed_timestamp;
       if (!Number.isFinite(age) || age > MAX_FEED_AGE_S || age < -60) {
         throw new Error("Live bus times are out of date");
       }
       Object.assign(trips, body.trips);
+      Object.assign(vehicles, body.vehicles ?? {});
       for (const id of ids.slice(i, i + 50)) timestamps[id] = body.feed_timestamp * 1000;
     }
     return deps.map((d) => {
+      const v = vehicles[d.tripId];
+      const vehicle = v && (!v.date || v.date === d.serviceDate)
+        ? { lat: v.lat, lon: v.lon, t: v.t * 1000, bearing: v.bearing } : null;
       const live = trips[d.tripId];
-      if (!live || live.date !== d.serviceDate) return d;
+      if (!live || live.date !== d.serviceDate) return vehicle ? { ...d, vehicle, feedAt: timestamps[d.tripId] } : d;
       const departureUpdate = updateAt(live, d.fromSeq, "departure");
       const arrivalUpdate = updateAt(live, d.toSeq, "arrival");
       return {
@@ -196,6 +210,7 @@ export async function withLiveDelays(deps: BusDeparture[], timeoutMs = 8000): Pr
         arriveDelayS: arrivalUpdate?.delayS ?? null,
         departureUpdate,
         arrivalUpdate,
+        vehicle,
         feedAt: timestamps[d.tripId],
       };
     });

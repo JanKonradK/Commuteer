@@ -25,7 +25,7 @@ export function TimetablesView(props: { shuttles: Shuttle[]; onOpenSettings: () 
   };
   return (
     <section>
-      <h1 className="page-title">Timetables</h1>
+      <h1 className="sr-only">Timetables</h1>
       <div className="segmented" role="tablist" aria-label="Timetable">
         {MODES.map((m) => (
           <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? "on" : ""} onClick={() => pick(m.id)}>

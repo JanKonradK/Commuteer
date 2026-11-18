@@ -78,3 +78,15 @@ def test_run_window_waits_between_offsets(sink: LocalSink) -> None:
     )
     assert slept == [30.0]
     assert sorted(r.source for r in results) == ["bus", "rail", "rail"]
+
+
+def test_poll_source_skips_unchanged_payload(sink: LocalSink) -> None:
+    from commuteer.collector import poller
+
+    poller._last_digest.clear()
+    fetcher = FakeFetcher({"rail.example": b"<same/>"})
+    first = poll_source(RAIL, sink, fetcher, now=lambda: NOW)
+    second = poll_source(RAIL, sink, fetcher, now=lambda: NOW.replace(second=59))
+    assert first.key is not None and not first.unchanged
+    assert second.key is None and second.unchanged and second.error is None
+    assert len(sink.list_keys("bronze/")) == 1

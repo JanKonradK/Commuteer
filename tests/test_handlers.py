@@ -102,3 +102,34 @@ def test_bus_live_reports_missing_feed(aws: None) -> None:
     handlers._feed_cache.clear()
     out = handlers.bus_live({"queryStringParameters": {"trips": "x"}}, None)
     assert out["statusCode"] == 503
+
+
+def test_bus_live_adds_vehicle_positions(aws: None) -> None:
+    import gzip
+    from pathlib import Path
+
+    from commuteer.buses.gtfsrt import decode_vehicle_positions
+
+    handlers._feed_cache.clear()
+    handlers._vehicle_cache.clear()
+    _put_feed()
+    raw = (Path(__file__).parent / "fixtures" / "nta_vehicles.pb.gz").read_bytes()
+    boto3.client("s3").put_object(Bucket="data", Key="latest/nta_vehicles.pb.gz", Body=raw)
+    _, fixes = decode_vehicle_positions(gzip.decompress(raw))
+    trip = next(iter(fixes))
+    out = handlers.bus_live({"queryStringParameters": {"trips": f"{trip},5940_99651"}}, None)
+    body = json.loads(out["body"])
+    vehicle = body["vehicles"][trip]
+    assert set(vehicle) == {"date", "lat", "lon", "t", "seq", "status", "bearing"}
+    assert 51 < vehicle["lat"] < 56 and -11 < vehicle["lon"] < -5  # Ireland
+    assert vehicle["t"] == fixes[trip].t
+
+
+def test_bus_live_works_without_vehicle_feed(aws: None) -> None:
+    handlers._feed_cache.clear()
+    handlers._vehicle_cache.clear()
+    _put_feed()
+    body = json.loads(
+        handlers.bus_live({"queryStringParameters": {"trips": "5940_99651"}}, None)["body"]
+    )
+    assert body["vehicles"] == {} and "5940_99651" in body["trips"]

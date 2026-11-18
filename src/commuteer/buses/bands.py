@@ -41,7 +41,14 @@ def _buckets(rows: list[tuple[int, float, float]], min_n: int) -> list[dict]:
         live = [r for b, r, _ in rows if b == i]
         tt = [a for b, _, a in rows if b == i]
         if len(live) >= max(min_n, 1):
-            out.append({"maxLeadMin": edge, "live": _quantiles(live), "timetable": _quantiles(tt), "n": len(live)})
+            out.append(
+                {
+                    "maxLeadMin": edge,
+                    "live": _quantiles(live),
+                    "timetable": _quantiles(tt),
+                    "n": len(live),
+                }
+            )
     return out
 
 
@@ -53,7 +60,11 @@ def export_bands(data: Path, out: Path) -> dict:
         with gzip.open(f, "rt", newline="") as fh:
             for r in csv.DictReader(fh):
                 try:
-                    row = (_bucket(float(r["sched_lead_min"])), float(r["actual"]) - float(r["tfi"]), float(r["actual"]))
+                    row = (
+                        _bucket(float(r["sched_lead_min"])),
+                        float(r["actual"]) - float(r["tfi"]),
+                        float(r["actual"]),
+                    )
                 except (ValueError, KeyError):
                     continue  # missing tfi/actual
                 days.add(r["service_date"])

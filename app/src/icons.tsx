@@ -86,6 +86,61 @@ const PATHS = {
       <circle cx="12" cy="12" r="3" />
     </>
   ),
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+    </>
+  ),
+  moon: <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />,
+  cloud: <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />,
+  rain: (
+    <>
+      <path d="M4 14.9A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.24" />
+      <path d="M16 14v6M8 14v6M12 16v6" />
+    </>
+  ),
+  snow: (
+    <>
+      <path d="M4 14.9A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.24" />
+      <path d="M8 15h.01M8 19h.01M12 17h.01M12 21h.01M16 15h.01M16 19h.01" />
+    </>
+  ),
+  fog: (
+    <>
+      <path d="M4 14.9A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.24" />
+      <path d="M16 17H7M17 21H9" />
+    </>
+  ),
+  storm: (
+    <>
+      <path d="M6 16.33A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.97" />
+      <path d="m13 12-3 5h4l-3 5" />
+    </>
+  ),
+  expand: (
+    <>
+      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+    </>
+  ),
+  close: (
+    <>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </>
+  ),
+  walk: (
+    <>
+      <path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" />
+      <path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" />
+      <path d="M16 17h4M4 13h4" />
+    </>
+  ),
+  bell: (
+    <>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PATHS;
@@ -99,7 +154,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden

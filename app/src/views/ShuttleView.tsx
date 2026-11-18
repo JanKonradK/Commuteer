@@ -159,10 +159,10 @@ export function ShuttleView(props: { shuttles: Shuttle[]; onOpenSettings: () => 
         />
       )}
       <div className="meta">
-        <span>{shuttle.name || "Shuttle"} · {daysText(shuttle.days)}</span>
-        <button className="link" onClick={props.onOpenSettings}>Edit timetable</button>
+        <span>{shuttle.name || "Shuttle"}</span>
+        <button className="link" onClick={props.onOpenSettings}>Edit</button>
       </div>
-      {trips.length === 0 && <p className="notice">No more shuttles between these stops today.</p>}
+      {trips.length === 0 && <p className="notice">No more shuttles today</p>}
       <ul>
         {trips.map((t) => (
           <li key={t.departS} className="card none">

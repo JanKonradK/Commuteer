@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import logging
 import time
 from collections import defaultdict
@@ -25,6 +26,12 @@ class PollResult:
     key: str | None
     size: int
     error: str | None = None
+    unchanged: bool = False
+
+
+# Digest of the last payload stored per source. Lives as long as the warm Lambda, so a
+# feed that has not refreshed since the previous poll is not written to S3 again.
+_last_digest: dict[str, bytes] = {}
 
 
 def _utc_now() -> datetime:
@@ -43,11 +50,15 @@ def poll_source(
     if not payload:
         log.warning("poll_error source=%s error=empty payload", source.name)
         return PollResult(source.name, None, 0, "empty payload")
+    digest = hashlib.blake2b(payload, digest_size=16).digest()
+    if _last_digest.get(source.name) == digest:
+        return PollResult(source.name, None, len(payload), unchanged=True)
     key = bronze_key(source.name, fetched_at, source.extension)
     compressed = gzip.compress(payload, mtime=0)
     sink.put(key, compressed)
     # A fixed-name copy of the newest snapshot, so the live API can read it in one request.
     sink.put(latest_key(source.name, source.extension), compressed)
+    _last_digest[source.name] = digest
     return PollResult(source.name, key, len(payload))
 
 

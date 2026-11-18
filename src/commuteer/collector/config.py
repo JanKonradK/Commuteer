@@ -26,8 +26,9 @@ def build_sources(nta_api_key: str | None) -> list[Source]:
     if nta_api_key:
         headers = {"x-api-key": nta_api_key}
         sources += [
-            # NTA asks for fair use; once a minute matches how often the feed refreshes.
-            Source("nta_trip_updates", f"{NTA_BASE}/TripUpdates", "pb", 60, headers),
-            Source("nta_vehicles", f"{NTA_BASE}/Vehicles", "pb", 60, headers),
+            # Every 30 s so the app is at most ~30 s behind the feed (TFI Live is about the
+            # same). Unchanged snapshots are not stored again, so storage does not double.
+            Source("nta_trip_updates", f"{NTA_BASE}/TripUpdates", "pb", 30, headers),
+            Source("nta_vehicles", f"{NTA_BASE}/Vehicles", "pb", 30, headers),
         ]
     return sources

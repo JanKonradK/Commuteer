@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type BusDeparture, busTimeSource, updateAt, upcomingBuses, withLiveDelays } from "../src/lib/buses";
+import { type BusDeparture, updateAt, upcomingBuses, withLiveDelays } from "../src/lib/buses";
 import { loadDepartures } from "../src/lib/departures";
 import { api, type BoardTrain, parseMovements, parseXml } from "../src/lib/irishRail";
 import { DelayModel, type ModelJson } from "../src/lib/model";
@@ -80,9 +80,8 @@ describe("live buses", () => {
   it("labels zero-delay upstream predictions as estimates, not confirmed on-time arrivals", async () => {
     feed({ T1: { date: bus.serviceDate, canceled: false, stops: [[1, "A", null, 0, false]] } });
     const [d] = await withLiveDelays([bus]);
-    expect(busTimeSource(d.departureUpdate)).toBe("Stop update");
-    expect(busTimeSource(d.arrivalUpdate)).toBe("Estimated");
-    expect(busTimeSource(null)).toBe("Timetable");
+    expect(d.departureUpdate?.source).toBe("stop");
+    expect(d.arrivalUpdate?.source).toBe("carried");
   });
 });
 

@@ -1,4 +1,4 @@
-"""Minimal GTFS-Realtime TripUpdates decoder (standard library only).
+"""Minimal GTFS-Realtime TripUpdates and VehiclePositions decoder (standard library only).
 
 Decodes just the fields Commuteer needs from the protobuf wire format, so the
 Lambda stays dependency-free. Field numbers follow gtfs-realtime.proto;
@@ -7,6 +7,7 @@ tests/test_gtfsrt.py checks the output against Google's official bindings.
 
 from __future__ import annotations
 
+import struct
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -129,3 +130,55 @@ def decode_trip_updates(feed: bytes) -> tuple[int, dict[str, TripDelay]]:
             )
         trips[trip_id] = delay
     return timestamp, trips
+
+
+def _float(f: Fields, n: int) -> float | None:
+    """A protobuf `float` (wire type I32) as a Python float."""
+    v = f.get(n)
+    if not v or not isinstance(v[0], int):
+        return None
+    return float(struct.unpack("<f", v[0].to_bytes(4, "little"))[0])
+
+
+@dataclass(frozen=True)
+class VehicleFix:
+    """Where a bus was at `t` (GPS time), and which stop it is at or heading for."""
+
+    trip_id: str
+    start_date: str
+    lat: float
+    lon: float
+    t: int  # unix seconds
+    stop_sequence: int | None  # VehiclePosition.current_stop_sequence
+    status: int | None  # 0 incoming at, 1 stopped at, 2 in transit to
+    bearing: float | None
+
+
+def decode_vehicle_positions(feed: bytes) -> tuple[int, dict[str, VehicleFix]]:
+    """Returns (feed timestamp, {trip_id: newest VehicleFix})."""
+    msg = parse_fields(feed)
+    header = _msg(msg, 1) or {}
+    timestamp = _int(header, 3) or 0
+    out: dict[str, VehicleFix] = {}
+    for raw_entity in msg.get(2, []):
+        assert isinstance(raw_entity, bytes)
+        vp = _msg(parse_fields(raw_entity), 4)  # FeedEntity.vehicle
+        if vp is None:
+            continue
+        trip, pos = _msg(vp, 1) or {}, _msg(vp, 2) or {}
+        trip_id, lat, lon, t = _str(trip, 1), _float(pos, 1), _float(pos, 2), _int(vp, 5)
+        if not trip_id or lat is None or lon is None or not t:
+            continue
+        fix = VehicleFix(
+            trip_id=trip_id,
+            start_date=_str(trip, 3),
+            lat=lat,
+            lon=lon,
+            t=t,
+            stop_sequence=_int(vp, 3),
+            status=_int(vp, 4),
+            bearing=_float(pos, 3),
+        )
+        if trip_id not in out or out[trip_id].t < fix.t:
+            out[trip_id] = fix
+    return timestamp, out
