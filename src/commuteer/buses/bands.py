@@ -15,6 +15,7 @@ import json
 import math
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 PROBS = [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
 EDGES = [5, 10, 20, 30, 45, None]  # bucket upper bounds on sched_lead_min; None = open
@@ -35,7 +36,7 @@ def _quantiles(xs: list[float]) -> list[float]:
     return out
 
 
-def _buckets(rows: list[tuple[int, float, float]], min_n: int) -> list[dict]:
+def _buckets(rows: list[tuple[int, float, float]], min_n: int) -> list[dict[str, Any]]:
     out = []
     for i, edge in enumerate(EDGES):
         live = [r for b, r, _ in rows if b == i]
@@ -52,7 +53,7 @@ def _buckets(rows: list[tuple[int, float, float]], min_n: int) -> list[dict]:
     return out
 
 
-def export_bands(data: Path, out: Path) -> dict:
+def export_bands(data: Path, out: Path) -> dict[str, Any]:
     rows: list[tuple[int, float, float]] = []
     r466: list[tuple[int, float, float]] = []
     days: set[str] = set()
